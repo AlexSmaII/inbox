@@ -217,7 +217,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-.data
-.dataset
-.sample
+backend/data
+!backend/data/labels.json
 backend/tmp
