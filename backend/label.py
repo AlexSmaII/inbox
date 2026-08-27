@@ -39,15 +39,19 @@ def label_samples(
     files = files[len(data):]
     for i, file in enumerate(files, start=len(data)):
         print(f"File #{i+1:03d}: {file.name}")
-        shipment  = input("Enter shipment / job code (starts with S or B): ")
-        container = input("Enter container code (leave blank if not given):")
-        if container == "": container = None
+        identifier  = input("Enter shipment / job code (starts with S or B):                       ")
+        container_string = input("Enter comma-separated container codes (leave blank if not given):")
+
+        identifier = identifier.upper()
+        containers = container_string.upper().replace(" ", "").split(",")
+        if container_string == "":
+            containers = []
 
         data.append({
             "index" : i,
             "path" : str(file.resolve()),
-            "shipment_code" : shipment,
-            "container_code" : container
+            "identifier" : identifier,
+            "container_codes" : containers
         })
         with open(EXPORT_FILE, "w", encoding="utf-8") as out:
             json.dump(data, out, indent=4)
