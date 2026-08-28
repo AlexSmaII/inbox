@@ -19,7 +19,12 @@ client = genai.Client(vertexai=True)
 MODEL = 'gemini-3.5-flash-lite'
 
 prompt = """
-Extract the 
+Extract the fields:
+
+Shipment code starts with 'S'
+Job code starts with 'B'
+Consignment code starts with 'T'
+Container codes are optional
 """
 
 class GeminiPODClassifier(PODClassifier):
@@ -29,7 +34,7 @@ class GeminiPODClassifier(PODClassifier):
 
     def _classify_docket(self, image : Image) -> DocketResult:
         bin = BytesIO()
-        image.save(bin, format="PNG")
+        image.save(bin, format="JPEG")
         image_bytes = bin.getvalue()
 
         response : GenerateContentResponse = client.models.generate_content(

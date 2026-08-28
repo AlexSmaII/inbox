@@ -1,16 +1,38 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 from models import Docket, DocketFile
 from pydantic import TypeAdapter
 from pydantic_evals import Case, Dataset
+from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
 DATASET_PATH : Path = Path(__file__).parent / "data" / "labels.json"
 
 dataset_adapter = TypeAdapter(list[DocketFile])
 
+
+@dataclass
+class DocketLegit(Evaluator):
+    def evaluate(self, ctx: EvaluatorContext) -> bool:
+        pred : Docket = ctx.output
+        return pred.is_valid
+
+
+@dataclass
+class DocketMatch(Evaluator):
+    def evaluate(self, ctx: EvaluatorContext) -> bool:
+        pred : Docket = ctx.output
+        true : Docket = ctx.expected_output
+
+        if pred.identifier != true.identifier: return False
+        if pred.consol_code != true.consol_code: return False
+        if sorted(pred.container_codes) != sorted(true.container_codes): return False
+        return True
+
+
 def load_dataset(
     path : Path = DATASET_PATH
-):
+) -> Dataset:
     with open(path, "r", encoding="utf-8") as f:
         dockets : list[DocketFile] = dataset_adapter.validate_json(f.read())
 
@@ -28,6 +50,9 @@ def load_dataset(
                 inputs=Path(d.path),
                 expected_output=Docket.model_validate(d.model_dump())
             ) for d in dockets
+        ],
+        evaluators=[
+            DocketMatch()
         ]
     )
 

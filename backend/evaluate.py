@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 from classifiers.gemini import GeminiPODClassifier
@@ -7,6 +8,7 @@ from pydantic_evals import Dataset
 from pydantic_evals.reporting import EvaluationReport
 
 DATASET_PATH : Path = Path(__file__).parent / "data" / "labels.json"
+RESULT_PATH  : Path = Path(__file__).parent / "data" / "result.json"
 dataset = load_dataset()
 classifier_gemini = GeminiPODClassifier("gemini-3.5-flash-lite")
 
@@ -24,13 +26,18 @@ def slice_dataset(dataset : Dataset, len : int) -> Dataset:
     )
 
 
-def evaluate(dataset : Dataset):
+def evaluate(dataset : Dataset, strategy : Callable):
     # Shrink base dataset
-    dataset : Dataset = slice_dataset(dataset, 2)
+    # dataset : Dataset = slice_dataset(dataset, 10)
     report : EvaluationReport = dataset.evaluate_sync(classify_gemini)
 
-    report.print()
+    # report_json = report.model_dump_json(indent=4)
+
+    # with open(RESULT_PATH, "w", encoding="utf-8") as f:
+    #     f.write(report_json)
+
+    report.print(include_output=True, include_expected_output=True)
 
 
 if __name__ == "__main__":
-    evaluate(dataset)
+    evaluate(dataset, classify_gemini)
