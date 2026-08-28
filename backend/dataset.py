@@ -1,16 +1,12 @@
-import json
-from pathlib import Path
 import re
+from pathlib import Path
 
-import numpy as np
 from pydantic import BaseModel, TypeAdapter
 from pydantic_evals import Case, Dataset
 
 DATASET_PATH : Path = Path(__file__).parent / "data" / "labels.json"
 
-class Docket(BaseModel):
-    index : int
-    path : str
+class DocketBase(BaseModel):
     shipment_code : str | None
     job_code : str | None
     consignment_code : str | None
@@ -51,6 +47,10 @@ class Docket(BaseModel):
         return True
 
 
+class Docket(DocketBase):
+    index : int
+    path : str
+
 
 dataset_adapter = TypeAdapter(list[Docket])
 
@@ -58,17 +58,27 @@ def load_dataset(
     path : Path = DATASET_PATH
 ):
     with open(path, "r", encoding="utf-8") as f:
-        dockets = dataset_adapter.validate_json(f.read())
+        dockets : list[Docket] = dataset_adapter.validate_json(f.read())
 
-    #is_valid = [d.is_valid for d in dockets]
-    #print(np.unique(is_valid, return_counts=True))
-    [print(f"{d.path}: {d.container_codes}") for d in dockets if not d.is_valid]
-    #raise NotImplementedError()
+    incorrect_dockets = [d for d in dockets if not d.is_valid]
+    if len(incorrect_dockets) > 0:
+        raise ValueError(
+            f"The following dockets are invalid: {[d.index for d in incorrect_dockets]}"
+        )
 
+    dataset = Dataset[Path, DocketBase, None](
+        name="pod_dockets",
+        cases = [
+            Case(
+                name=d.path,
+                inputs=Path(d.path),
+                expected_output=DocketBase.model_validate(d.model_dump())
+            ) for d in dockets
+        ]
+    )
 
-def purify_dataset():
-    raise NotImplementedError
+    return dataset
 
 
 if __name__ == "__main__":
-    load_dataset()
+    print(load_dataset().model_dump_json(indent=4))
