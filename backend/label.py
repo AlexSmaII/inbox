@@ -39,18 +39,28 @@ def label_samples(
     files = files[len(data):]
     for i, file in enumerate(files, start=len(data)):
         print(f"File #{i+1:03d}: {file.name}")
-        identifier  = input("Enter shipment / job code (starts with S or B):                       ")
-        container_string = input("Enter comma-separated container codes (leave blank if not given):")
+        identifier       = input("Enter shipment / job / consignment code (starts with S or B or T):")
+        consol           = input("Enter CONSOL code (starts with C, leave blank if not given):      ")
+        container_string = input("Enter comma-separated container codes (leave blank if not given): ")
 
-        identifier = identifier.upper()
-        containers = container_string.upper().replace(" ", "").split(",")
-        if container_string == "":
-            containers = []
+        identifier = identifier.upper().strip()
+
+        shipment_code = identifier if identifier.startswith("S") else None
+        job_code = identifier if identifier.startswith("B") else None
+        consignment_code = identifier if identifier.startswith("T") else None
+
+        consol = consol.upper().strip()
+        if consol == "": consol = None
+        containers = container_string.upper().strip().replace(" ", "").split(",")
+        if container_string == "": containers = []
 
         data.append({
             "index" : i,
             "path" : str(file.resolve()),
-            "identifier" : identifier,
+            "shipment_code" : shipment_code,
+            "job_code" : job_code,
+            "consignment_code" : consignment_code,
+            "consol_code" : consol,
             "container_codes" : containers
         })
         with open(EXPORT_FILE, "w", encoding="utf-8") as out:
