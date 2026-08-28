@@ -162,7 +162,7 @@
         "shipment_code": "S00540556",
         "job_code": null,
         "consignment_code": null,
-        "consol_code": "C00309808",
+        "consol_code": "C00309806",
         "container_codes": [
             "TCLU4778396"
         ]
@@ -608,7 +608,9 @@
         "job_code": "B00175707",
         "consignment_code": null,
         "consol_code": null,
-        "container_codes": []
+        "container_codes": [
+            "OERU4369399"
+        ]
     },
     {
         "index": 58,
@@ -649,7 +651,7 @@
         "shipment_code": "S00540204",
         "job_code": null,
         "consignment_code": null,
-        "consol_code": "C00309902",
+        "consol_code": "C00309903",
         "container_codes": [
             "TXGU4313779"
         ]
@@ -726,7 +728,7 @@
         "shipment_code": "S00542115",
         "job_code": null,
         "consignment_code": null,
-        "consol_code": "C00309726",
+        "consol_code": "C00309728",
         "container_codes": [
             "CSNU2528635"
         ]
