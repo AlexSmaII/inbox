@@ -1,15 +1,20 @@
-import json
+from io import BytesIO
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from google.genai.types import GenerateContentResponse, UsageMetadata
+from google.genai.types import (
+    GenerateContentConfig,
+    GenerateContentResponse,
+    GenerateContentResponseUsageMetadata,
+)
+from models import Docket, DocketResult
 from PIL import Image
-from pydantic import BaseModel
 
-from ..models import Docket, DocketResult
 from .base import PODClassifier
 
-client = genai.Client()
+load_dotenv()
+client = genai.Client(vertexai=True)
 
 MODEL = 'gemini-3.5-flash-lite'
 
@@ -19,43 +24,42 @@ Extract the
 
 class GeminiPODClassifier(PODClassifier):
 
-    def __init__(self, model : str):
+    def __init__(self, model : str) -> None:
         self.model = model
 
-    def __classify_docket(self, image : Image):
-        
+    def _classify_docket(self, image : Image) -> DocketResult:
+        bin = BytesIO()
+        image.save(bin, format="PNG")
+        image_bytes = bin.getvalue()
+
         response : GenerateContentResponse = client.models.generate_content(
-            model = MODEL,
+            model = self.model,
             contents=[
+                prompt,
                 types.Part.from_bytes(
-                    data=image.tobytes(),
+                    data=image_bytes,
                     mime_type='image/jpeg'
-                ),
-                prompt
+                )
             ],
-            config={
-                "response_format": {
-                    "text": {
-                        "mime_type": "application/json",
-                        "schema": Docket.model_json_schema
-                    }
-                }
-            }
+            config=GenerateContentConfig(
+                temperature=0,
+                response_schema=Docket,
+                response_mime_type="application/json"
+            )
         )
 
         response_json_string : str = response.text
-        response_json : dict = json.load(response_json_string)
 
-        tokens : UsageMetadata = response.usage_metadata
+        tokens : GenerateContentResponseUsageMetadata = response.usage_metadata
 
-        tokens_in, tokens_out = tokens.promptTokenCount, tokens.candidatesTokenCount + tokens.thoughtsTokenCount
+        tokens_in, tokens_out = tokens.prompt_token_count or 0, tokens.candidates_token_count or 0 + tokens.thoughts_token_count or 0
 
-        response = Docket.model_validate_strings(response_json)
+        response = Docket.model_validate_json(response_json_string)
 
         result = DocketResult.model_validate({
-            **Docket.model_dump(),
-            tokens_in : tokens_in,
-            tokens_out : tokens_out
+            **response.model_dump(),
+            "tokens_in" : tokens_in,
+            "tokens_out" : tokens_out
         })
 
         return result
