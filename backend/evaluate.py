@@ -1,6 +1,8 @@
 from collections.abc import Callable
 from pathlib import Path
 
+from classifiers.base import PODClassifier
+from classifiers.dummy import DummyPODClassifier
 from classifiers.gemini import GeminiPODClassifier
 from dataset import load_dataset
 from models import Docket, DocketResult
@@ -10,12 +12,8 @@ from pydantic_evals.reporting import EvaluationReport
 DATASET_PATH : Path = Path(__file__).parent / "data" / "labels.json"
 RESULT_PATH  : Path = Path(__file__).parent / "data" / "result.json"
 dataset = load_dataset()
+classifier_dummy = DummyPODClassifier()
 classifier_gemini = GeminiPODClassifier("gemini-3.5-flash-lite")
-
-
-def classify_gemini(path : Path) -> Docket:
-    result : DocketResult = classifier_gemini.classify_docket(path)
-    return Docket.model_validate(result.model_dump())
 
 
 def slice_dataset(dataset : Dataset, len : int) -> Dataset:
@@ -26,10 +24,16 @@ def slice_dataset(dataset : Dataset, len : int) -> Dataset:
     )
 
 
-def evaluate(dataset : Dataset, strategy : Callable):
+def evaluate(dataset : Dataset, strategy : PODClassifier):
     # Shrink base dataset
     # dataset : Dataset = slice_dataset(dataset, 10)
-    report : EvaluationReport = dataset.evaluate_sync(classify_gemini)
+
+    def classify(path : Path):
+        result : DocketResult = strategy.classify_docket(path)
+        return Docket.model_validate(result.model_dump())
+
+
+    report : EvaluationReport = dataset.evaluate_sync(classify)
 
     # report_json = report.model_dump_json(indent=4)
 
@@ -40,4 +44,4 @@ def evaluate(dataset : Dataset, strategy : Callable):
 
 
 if __name__ == "__main__":
-    evaluate(dataset, classify_gemini)
+    evaluate(dataset, DummyPODClassifier())
