@@ -1,5 +1,6 @@
 import re
 
+from genai_prices import Usage, calc_price
 from pydantic import BaseModel
 
 
@@ -52,3 +53,19 @@ class DocketFile(Docket):
 class DocketResult(Docket):
     tokens_in : int
     tokens_out : int
+    model_name : str | None = None
+    model_provider : str | None = None
+
+    @property
+    def cost(self) -> float:
+        if not self.model_name or not self.model_provider:
+            return 0
+        
+        return calc_price(
+            Usage(
+                input_tokens=self.tokens_in,
+                output_tokens=self.tokens_out
+            ),
+            model_ref=self.model_name,
+            provider_id=self.model_provider
+        ).total_price

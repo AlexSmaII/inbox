@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from models import Docket, DocketFile
+from models import Docket, DocketFile, DocketResult
 from pydantic import TypeAdapter
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
@@ -32,7 +32,7 @@ class DocketMatch(Evaluator):
 
 def load_dataset(
     path : Path = DATASET_PATH
-) -> Dataset:
+) -> Dataset[Path, DocketResult, None]:
     with open(path, "r", encoding="utf-8") as f:
         dockets : list[DocketFile] = dataset_adapter.validate_json(f.read())
 
@@ -42,13 +42,19 @@ def load_dataset(
             f"The following dockets are invalid: {[d.index for d in incorrect_dockets]}"
         )
 
-    dataset = Dataset[Path, Docket, None](
+    dataset = Dataset[Path, DocketResult, None](
         name="pod_dockets",
         cases = [
             Case(
                 name=d.path,
                 inputs=Path(d.path),
-                expected_output=Docket.model_validate(d.model_dump())
+                expected_output=DocketResult.model_validate(
+                    {
+                        **d.model_dump(),
+                        "tokens_in" : 0,
+                        "tokens_out" : 0
+                    }
+                )
             ) for d in dockets
         ],
         evaluators=[

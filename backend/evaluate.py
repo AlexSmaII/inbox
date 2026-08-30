@@ -1,11 +1,10 @@
-from collections.abc import Callable
 from pathlib import Path
 
 from classifiers.base import PODClassifier
 from classifiers.dummy import DummyPODClassifier
 from classifiers.gemini import GeminiPODClassifier
 from dataset import load_dataset
-from models import Docket, DocketResult
+from models import DocketResult
 from pydantic_evals import Dataset
 from pydantic_evals.reporting import EvaluationReport
 
@@ -24,13 +23,13 @@ def slice_dataset(dataset : Dataset, len : int) -> Dataset:
     )
 
 
-def evaluate(dataset : Dataset, strategy : PODClassifier):
+def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifier):
     # Shrink base dataset
-    # dataset : Dataset = slice_dataset(dataset, 10)
+    dataset : Dataset = slice_dataset(dataset, 3)
 
     def classify(path : Path):
-        result : DocketResult = strategy.classify_docket(path)
-        return Docket.model_validate(result.model_dump())
+        return strategy.classify_docket(path)
+        #return Docket.model_validate(result.model_dump())
 
 
     report : EvaluationReport = dataset.evaluate_sync(classify)
@@ -44,4 +43,4 @@ def evaluate(dataset : Dataset, strategy : PODClassifier):
 
 
 if __name__ == "__main__":
-    evaluate(dataset, DummyPODClassifier())
+    evaluate(dataset, GeminiPODClassifier("gemini-3.5-flash-lite"))

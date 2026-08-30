@@ -64,7 +64,9 @@ class GeminiPODClassifier(PODClassifier):
         result = DocketResult.model_validate({
             **response.model_dump(),
             "tokens_in" : tokens_in,
-            "tokens_out" : tokens_out
+            "tokens_out" : tokens_out,
+            "model_name" : self.model,
+            "model_provider" : "google"
         })
 
         return result
