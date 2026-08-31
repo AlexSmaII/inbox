@@ -12,22 +12,26 @@ dataset_adapter = TypeAdapter(list[DocketFile])
 
 
 @dataclass
-class Correct(Evaluator):
+class Valid(Evaluator):
     def evaluate(self, ctx: EvaluatorContext) -> bool:
         pred : Docket = ctx.output
         return pred.is_valid
 
 
 @dataclass
-class ExactMatch(Evaluator):
+class IdentifierMatch(Evaluator):
     def evaluate(self, ctx: EvaluatorContext) -> bool:
         pred : Docket = ctx.output
         true : Docket = ctx.expected_output
+        return pred.identifier == true.identifier
 
-        if pred.identifier != true.identifier: return False
-        if pred.consol_code != true.consol_code: return False
-        if sorted(pred.container_codes) != sorted(true.container_codes): return False
-        return True
+
+@dataclass
+class ContainersMatch(Evaluator):
+    def evaluate(self, ctx: EvaluatorContext) -> bool:
+        pred : Docket = ctx.output
+        true : Docket = ctx.expected_output
+        return sorted(pred.container_codes) == sorted(true.container_codes)
 
 
 @dataclass
@@ -35,6 +39,12 @@ class CostPerThousand(Evaluator):
     def evaluate(self, ctx : EvaluatorContext) -> float:
         pred : DocketResult = ctx.output
         return pred.cost * 1000
+
+
+@dataclass
+class HoursPerThousand(Evaluator):
+    def evaluate(self, ctx : EvaluatorContext) -> float:
+        return ctx.duration * 1000 / 60 / 60
 
 
 def load_dataset(
@@ -65,8 +75,11 @@ def load_dataset(
             ) for d in docket_files
         ],
         evaluators=[
-            ExactMatch(),
-            CostPerThousand()
+            Valid(),
+            IdentifierMatch(),
+            ContainersMatch(),
+            CostPerThousand(),
+            HoursPerThousand()
         ]
     )
 
