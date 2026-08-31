@@ -61,18 +61,19 @@ class Docket(DocketBase):
     file_name : str
 
 
-class DocketClassification(DocketBase):
+class ModelCall(BaseModel):
     tokens_in : int
     tokens_out : int
     model_name : str | None = None
     model_provider : str | None = None
 
+    @computed_field
     @property
     def cost(self) -> float:
         if not self.model_name or not self.model_provider:
             return 0
         
-        return calc_price(
+        price = calc_price(
             Usage(
                 input_tokens=self.tokens_in,
                 output_tokens=self.tokens_out
@@ -80,6 +81,32 @@ class DocketClassification(DocketBase):
             model_ref=self.model_name,
             provider_id=self.model_provider
         ).total_price
+
+        return float(price)
+
+
+class DocketClassification(DocketBase):
+    model_calls : list[ModelCall] = []
+
+    @computed_field
+    @property
+    def tokens_in(self) -> int:
+        return sum([c.tokens_in for c in self.model_calls])
+
+    @computed_field
+    @property
+    def tokens_out(self) -> int:
+        return sum([c.tokens_out for c in self.model_calls])
+
+    @computed_field
+    @property
+    def cost(self) -> float:
+        return sum([c.cost for c in self.model_calls])
+
+    @computed_field
+    @property
+    def models_used(self) -> int:
+        return len(self.model_calls)
 
 
 class DocketResult(DocketClassification):

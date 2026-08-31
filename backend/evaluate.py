@@ -42,6 +42,7 @@ def serialise_result(
             "File Name": true.file_name,
             "Cost": f"${(pred.cost):.6f}",
             "Seconds": f"{case.total_duration:.2f}",
+            "Attempts": f"{pred.models_used}",
             "Tokens In": f"{pred.tokens_in}",
             "Tokens Out": f"{pred.tokens_out}",
             "Predicted Number": pred.identifier,
@@ -70,7 +71,7 @@ def export_result(
 
 def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifier):
     # Shrink base dataset
-    # dataset : Dataset = slice_dataset(dataset, 3)
+    # dataset : Dataset = slice_dataset(dataset, 10)
 
     def classify(path : Path):
         return strategy.classify_docket(path)
@@ -90,4 +91,9 @@ def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifi
 
 
 if __name__ == "__main__":
-    evaluate(dataset, GeminiPODClassifier("gemini-3.5-flash-lite"))
+    models = [
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash-lite"
+    ]
+
+    evaluate(dataset, GeminiPODClassifier(models))

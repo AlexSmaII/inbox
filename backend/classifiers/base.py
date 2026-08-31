@@ -7,6 +7,16 @@ from preprocess import extract_pod_image
 
 
 class PODClassifier(ABC):
+    """
+    Classifies a POD docket by extracting the image
+    from the docket PDF and then running an abstract
+    function `_classify_docket` to generate a
+    DocketClassification object representing the
+    values extracted from the docket.
+
+    The `_classify_docket` method must be implemented
+    by all instances of this class. 
+    """
 
     @abstractmethod
     def _classify_docket(self, image : Image) -> DocketClassification:

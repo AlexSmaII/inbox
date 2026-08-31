@@ -47,6 +47,13 @@ class HoursPerThousand(Evaluator):
         return ctx.duration * 1000 / 60 / 60
 
 
+@dataclass
+class ModelsUsed(Evaluator):
+    def evaluate(self, ctx : EvaluatorContext) -> float:
+        pred : DocketResult = ctx.output
+        return pred.models_used
+
+
 def load_dataset(
     path : Path = DATASET_PATH
 ) -> Dataset[Path, DocketResult, None]:
@@ -79,7 +86,8 @@ def load_dataset(
             IdentifierMatch(),
             ContainersMatch(),
             CostPerThousand(),
-            HoursPerThousand()
+            HoursPerThousand(),
+            ModelsUsed()
         ]
     )
 
