@@ -666,6 +666,7 @@ dependencies = [
     { name = "pydantic-evals" },
     { name = "pypdfium2" },
     { name = "python-dotenv" },
+    { name = "requests" },
 ]
 
 [package.metadata]
@@ -681,6 +682,7 @@ requires-dist = [
     { name = "pydantic-evals", specifier = ">=2.35.1" },
     { name = "pypdfium2", specifier = ">=5.13.0" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
+    { name = "requests", specifier = ">=2.34.2" },
 ]
 
 [[package]]
