@@ -33,7 +33,8 @@ class DocketBase(BaseModel):
             return code[-1] == check_digit_value
 
         for code in self.container_codes:
-            if not re.match(r"[A-Z]{3}[U|J|Z]\d{7}", code): return False
+            if len(code) != 11: return False
+            if not re.match(r"^[A-Z]{3}[U|J|Z]\d{7}$", code): return False
             if not validate_container_code(code): return False
 
         if self.shipment_code    and not re.match(r"S\d{8}", self.shipment_code    or ""): return False
