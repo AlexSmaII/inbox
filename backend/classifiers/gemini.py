@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 from io import BytesIO
+from time import sleep
 
 from dotenv import load_dotenv
 from google import genai
@@ -8,13 +10,21 @@ from google.genai.types import (
     GenerateContentResponse,
     GenerateContentResponseUsageMetadata,
 )
-from models import Docket, DocketClassification, ModelCall
+from models import (
+    Docket,
+    DocketBase,
+    DocketClassification,
+    ModelCall
+)
 from PIL import Image
 
 from .base import PODClassifier
 
 load_dotenv()
 client = genai.Client(vertexai=True)
+
+MAX_RETRIES  = 3
+RETRY_COOLDOWN = 20
 
 PROMPT = """
 Extract the fields:
@@ -57,46 +67,79 @@ class GeminiPODClassifier(PODClassifier):
         self,
         model : str,
         image_bytes : bytes,
-        previous_model_calls : list[ModelCall]
+        previous_model_calls : list[ModelCall],
+        retries : int = MAX_RETRIES,
+        retry_cooldown : timedelta = timedelta(seconds=RETRY_COOLDOWN)
     ) -> DocketClassification:
 
-        response : GenerateContentResponse = client.models.generate_content(
-            model = model,
-            contents=[
-                PROMPT,
-                types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type='image/jpeg'
+        for i in range(retries):
+
+            response_json_string = None
+
+            try:
+                response : GenerateContentResponse = client.models.generate_content(
+                    model = model,
+                    contents=[
+                        PROMPT,
+                        types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type='image/jpeg'
+                        )
+                    ],
+                    config=GenerateContentConfig(
+                        temperature=0,
+                        response_schema=DocketBase,
+                        response_mime_type="application/json"
+                    )
                 )
-            ],
-            config=GenerateContentConfig(
-                temperature=0,
-                response_schema=Docket,
-                response_mime_type="application/json"
-            )
-        )
 
-        response_json_string : str = response.text
+                response_json_string : str = response.text
 
-        tokens : GenerateContentResponseUsageMetadata = response.usage_metadata
+                tokens : GenerateContentResponseUsageMetadata = response.usage_metadata
 
-        model_call = ModelCall(
-            tokens_in = tokens.prompt_token_count or 0,
-            tokens_out = tokens.candidates_token_count or 0 + tokens.thoughts_token_count or 0,
-            model_name = model,
-            model_provider = "google"
-        )
+                response = DocketBase.model_validate_json(response_json_string)
 
-        model_calls = [*previous_model_calls, model_call]
+                model_call = ModelCall(
+                    tokens_in = tokens.prompt_token_count or 0,
+                    tokens_out = tokens.candidates_token_count or 0 + tokens.thoughts_token_count or 0,
+                    model_name = model,
+                    model_provider = "google"
+                )
 
-        response = Docket.model_validate_json(response_json_string)
+                model_calls = [*previous_model_calls, model_call]
 
-        result = DocketClassification.model_validate({
-            **response.model_dump(),
-            "model_calls" : model_calls
-        })
+                result = DocketClassification.model_validate({
+                    **response.model_dump(),
+                    "model_calls" : model_calls
+                })
 
-        return result
+                return result
+
+            except Exception as e:
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                secs = retry_cooldown.total_seconds()
+
+                message = f"{timestamp}: "
+
+                if response_json_string:
+                    message += f"Received illegal response from {model}. "
+                else: message += f"Call to {model} failed. "
+
+                message += f"Retrying in {secs:.0f} seconds. "
+                message += f"{retries - i} attempt(s) remaining. "
+
+                print(message.strip())
+
+                if response_json_string:
+                    print(response_json_string)
+                
+                print(f"Traceback: {e!s}")
+                
+                if i == retries - 1:
+                    raise e
+            
+            finally:
+                sleep(retry_cooldown.total_seconds())
 
 
     def _classify_docket(self, image : Image) -> DocketClassification:

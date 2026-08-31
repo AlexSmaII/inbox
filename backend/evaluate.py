@@ -78,7 +78,10 @@ def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifi
         #return Docket.model_validate(result.model_dump())
 
 
-    report : EvaluationReport = dataset.evaluate_sync(classify)
+    report : EvaluationReport = dataset.evaluate_sync(
+        classify,
+        max_concurrency=20
+    )
 
     # report_json = report.model_dump_json(indent=4)
 
