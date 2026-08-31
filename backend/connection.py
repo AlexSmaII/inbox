@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -28,12 +29,16 @@ r = requests.post(
     CW_MCP_URL,
     headers = {
         "Authorization" : f"Bearer {CW_MCP_TOKEN}",
-        "Accept" : "application/json, text/event-stream",
-        "Content-Type": "application/json"
+        "Accept" : "application/json"
     },
     json = list_tools
 )
 
 print(r.status_code)
 r.raise_for_status()
-print(json.dumps(r.json(), indent=4))
+
+SCHEMA_PATH = Path(__file__).parent / "data" / "mcp.json"
+SCHEMA_PATH.parent.mkdir(exist_ok=True, parents=True)
+
+with open(SCHEMA_PATH, "w", encoding="utf-8") as f:
+    json.dump(r.json(), f, indent=4)
