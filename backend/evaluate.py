@@ -1,5 +1,8 @@
+import shutil
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 from classifiers.base import PODClassifier
 from classifiers.dummy import DummyPODClassifier
 from classifiers.gemini import GeminiPODClassifier
@@ -9,7 +12,7 @@ from pydantic_evals import Dataset
 from pydantic_evals.reporting import EvaluationReport
 
 DATASET_PATH : Path = Path(__file__).parent / "data" / "labels.json"
-RESULT_PATH  : Path = Path(__file__).parent / "data" / "result.json"
+RESULT_PATH  : Path = Path(__file__).parent / "data" / "result.csv"
 dataset = load_dataset()
 classifier_dummy = DummyPODClassifier()
 classifier_gemini = GeminiPODClassifier("gemini-3.5-flash-lite")
@@ -23,9 +26,51 @@ def slice_dataset(dataset : Dataset, len : int) -> Dataset:
     )
 
 
+def serialise_result(
+    report : EvaluationReport
+) -> list[dict[str, str]]:
+    result : list[dict] = []
+
+    mean_cost = np.mean([c.output.cost for c in report.cases])
+    mean_time = np.mean([c.total_duration for c in report.cases])
+
+    for case in report.cases:
+        pred : DocketResult = case.output
+        true : DocketResult  = case.expected_output
+
+        result.append({
+            "File Name": true.file_name,
+            "Cost": f"${(pred.cost):.6f}",
+            "Seconds": f"{case.total_duration:.2f}",
+            "Tokens In": f"{pred.tokens_in}",
+            "Tokens Out": f"{pred.tokens_out}",
+            "Predicted Number": pred.identifier,
+            "True Number": true.identifier,
+            "Predicted Container Number": ", ".join(pred.container_codes) or "N/A",
+            "True Container Number": ", ".join(true.container_codes) or "N/A"
+        })
+    
+    result.append({
+            "File Name": "AVERAGE PER 1000 POD'S",
+            "Cost": f"${(mean_cost * 1000):.2f}",
+            "Seconds": f"{mean_time * 1000:.2f}"
+    })
+
+    return result
+
+
+def export_result(
+    result : EvaluationReport,
+    out_path : Path
+):
+    result_dict = serialise_result(result)
+    pd.DataFrame(result_dict).to_csv(out_path, index=False)
+    print(f"Result saved to file: {out_path}")
+
+
 def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifier):
     # Shrink base dataset
-    dataset : Dataset = slice_dataset(dataset, 3)
+    # dataset : Dataset = slice_dataset(dataset, 3)
 
     def classify(path : Path):
         return strategy.classify_docket(path)
@@ -40,6 +85,8 @@ def evaluate(dataset : Dataset[Path, DocketResult, None], strategy : PODClassifi
     #     f.write(report_json)
 
     report.print(include_output=True, include_expected_output=True)
+
+    export_result(report, RESULT_PATH)
 
 
 if __name__ == "__main__":

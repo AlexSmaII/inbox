@@ -1,4 +1,4 @@
-from models import DocketResult
+from models import DocketClassification
 from PIL import Image
 
 from .base import PODClassifier
@@ -6,8 +6,8 @@ from .base import PODClassifier
 
 class DummyPODClassifier(PODClassifier):
 
-    def _classify_docket(self, image : Image) -> DocketResult:
-        return DocketResult(
+    def _classify_docket(self, image : Image) -> DocketClassification:
+        return DocketClassification(
             shipment_code = 'S12345678',
             job_code = None,
             consignment_code = None,

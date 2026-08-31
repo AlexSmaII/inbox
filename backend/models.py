@@ -1,10 +1,11 @@
 import re
+from pathlib import Path
 
 from genai_prices import Usage, calc_price
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
-class Docket(BaseModel):
+class DocketBase(BaseModel):
     shipment_code : str | None
     job_code : str | None
     consignment_code : str | None
@@ -45,12 +46,21 @@ class Docket(BaseModel):
         return True
 
 
-class DocketFile(Docket):
-    index : int
+class DocketFile(DocketBase):
     path : str
+    index : int
+    
+    @computed_field
+    @property
+    def file_name(self) -> str:
+        return Path(self.path).name
 
 
-class DocketResult(Docket):
+class Docket(DocketBase):
+    file_name : str
+
+
+class DocketClassification(DocketBase):
     tokens_in : int
     tokens_out : int
     model_name : str | None = None
@@ -69,3 +79,7 @@ class DocketResult(Docket):
             model_ref=self.model_name,
             provider_id=self.model_provider
         ).total_price
+
+
+class DocketResult(DocketClassification):
+    file_name : str

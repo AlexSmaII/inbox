@@ -12,14 +12,14 @@ dataset_adapter = TypeAdapter(list[DocketFile])
 
 
 @dataclass
-class DocketLegit(Evaluator):
+class Correct(Evaluator):
     def evaluate(self, ctx: EvaluatorContext) -> bool:
         pred : Docket = ctx.output
         return pred.is_valid
 
 
 @dataclass
-class DocketMatch(Evaluator):
+class ExactMatch(Evaluator):
     def evaluate(self, ctx: EvaluatorContext) -> bool:
         pred : Docket = ctx.output
         true : Docket = ctx.expected_output
@@ -30,13 +30,20 @@ class DocketMatch(Evaluator):
         return True
 
 
+@dataclass
+class CostPerThousand(Evaluator):
+    def evaluate(self, ctx : EvaluatorContext) -> float:
+        pred : DocketResult = ctx.output
+        return pred.cost * 1000
+
+
 def load_dataset(
     path : Path = DATASET_PATH
 ) -> Dataset[Path, DocketResult, None]:
     with open(path, "r", encoding="utf-8") as f:
-        dockets : list[DocketFile] = dataset_adapter.validate_json(f.read())
+        docket_files : list[DocketFile] = dataset_adapter.validate_json(f.read())
 
-    incorrect_dockets = [d for d in dockets if not d.is_valid]
+    incorrect_dockets = [d for d in docket_files if not d.is_valid]
     if len(incorrect_dockets) > 0:
         raise ValueError(
             f"The following dockets are invalid: {[d.index for d in incorrect_dockets]}"
@@ -55,10 +62,11 @@ def load_dataset(
                         "tokens_out" : 0
                     }
                 )
-            ) for d in dockets
+            ) for d in docket_files
         ],
         evaluators=[
-            DocketMatch()
+            ExactMatch(),
+            CostPerThousand()
         ]
     )
 

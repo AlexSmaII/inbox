@@ -8,7 +8,7 @@ from google.genai.types import (
     GenerateContentResponse,
     GenerateContentResponseUsageMetadata,
 )
-from models import Docket, DocketResult
+from models import Docket, DocketClassification
 from PIL import Image
 
 from .base import PODClassifier
@@ -32,7 +32,7 @@ class GeminiPODClassifier(PODClassifier):
     def __init__(self, model : str) -> None:
         self.model = model
 
-    def _classify_docket(self, image : Image) -> DocketResult:
+    def _classify_docket(self, image : Image) -> DocketClassification:
         bin = BytesIO()
         image.save(bin, format="JPEG")
         image_bytes = bin.getvalue()
@@ -61,7 +61,7 @@ class GeminiPODClassifier(PODClassifier):
 
         response = Docket.model_validate_json(response_json_string)
 
-        result = DocketResult.model_validate({
+        result = DocketClassification.model_validate({
             **response.model_dump(),
             "tokens_in" : tokens_in,
             "tokens_out" : tokens_out,
