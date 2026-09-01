@@ -1,16 +1,19 @@
 import base64
-import xml
 from datetime import timedelta
 from pathlib import Path
 
 import requests
+from parser import parse_cw_response
 from requests import Response
+from schemas import UniversalResponse
+
 
 class CargoWiseConnection:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
     interface.
     """
+    
     def __init__(
         self,
         url : str,
@@ -25,17 +28,12 @@ class CargoWiseConnection:
         self.url = url
     
 
-    def decode_response(
-        text : str
-    ):
-        pass
-
-
     def post(
         self,
         data : str,
         timeout : timedelta = timedelta(minutes=2)
-    ) -> Response:
+    ) -> UniversalResponse:
+
         response : Response = requests.post(
             url=self.url,
             headers={
@@ -48,7 +46,13 @@ class CargoWiseConnection:
 
         response.raise_for_status()
 
-        return response
+        if not response.text:
+            raise ValueError("CW1 eAdaptor returned no XML response")
+
+        response_data : UniversalResponse = parse_cw_response(response.text)
+
+        return response_data
+
 
 if __name__ == "__main__":
     import os
@@ -83,8 +87,4 @@ if __name__ == "__main__":
         DUMMY_DATA
     )
 
-    # print(result.status_code)
-    # print(result.text)
-
-    with open(OUT_PATH, "w") as f:
-        f.write(result.text)
+    print(result.status)

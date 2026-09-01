@@ -14,10 +14,8 @@ dependencies = [
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "pydantic-evals>=2.35.1",
-    "pydantic-xml>=2.21.1",
     "pypdfium2>=5.13.0",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
     "xsdata-pydantic>=24.5",
-    "xsdata[cli]>=26.2",
 ]
