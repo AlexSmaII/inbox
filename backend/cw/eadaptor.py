@@ -1,7 +1,6 @@
 import base64
 from datetime import timedelta
 from pathlib import Path
-from xml.etree import ElementTree as Tree
 
 import requests
 from parser import parse_cw_response
@@ -14,8 +13,8 @@ from schemas import (
     UniversalTransaction,
     UniversalTransactionBatch,
 )
-from xsdata_pydantic.bindings import XmlSerializer
 from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
+from xsdata_pydantic.bindings import XmlSerializer
 
 CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch
 
@@ -61,7 +60,7 @@ class CargoWiseConnection:
                 ns_map={None: CW_NAMESPACE}
             )
         except Exception as e:
-            raise ValueError(f"Failed to serialise XML object: {str(e)}")
+            raise ValueError(f"Failed to serialise XML object: {e!s}")
         
         return xml_string
 
@@ -121,8 +120,8 @@ class CargoWiseConnection:
 
 
 if __name__ == "__main__":
-    from datetime import datetime, timezone
     import os
+    from datetime import datetime, timezone
 
     from dotenv import load_dotenv
     from schemas import Event
@@ -145,24 +144,19 @@ if __name__ == "__main__":
 
     conn = CargoWiseConnection(CW_URL, CW_USER, CW_PASS)
     
-    # DUMMY_DATA_FILE = Path(r"\\venus\Natrio\IT\eAdaptor\XML\Sample Universal XML\US_BOL_Context_BookingParty.xml")
-    # with open(DUMMY_DATA_FILE, "r") as f:
-    #     DUMMY_DATA = f.read()
-    
     DUMMY_DATA = UniversalEvent(
         event=Event(
             event_time=datetime.now(timezone.utc).isoformat(),
-            event_type="ABC"
+            event_type="ARV"
         )
     )
 
-    result = conn._serialize_cargowise_object(DUMMY_DATA)#post(DUMMY_DATA)
+    result = conn._serialize_cargowise_object(DUMMY_DATA)
 
-    OUT_PATH = Path(__file__).parent / "test" / "result2.xml"
-
-    with open(OUT_PATH, "w") as f:
-        f.write(result)
+    print("Pushing XML object to CargoWise:")
+    print(result)
     
     result = conn.post(DUMMY_DATA)
 
-    # print(result.model_dump_json(indent=4))
+    print("Received successful response:")
+    print(result.model_dump_json(indent=4))
