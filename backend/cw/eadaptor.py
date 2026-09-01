@@ -6,7 +6,6 @@ from pathlib import Path
 import requests
 from requests import Response
 
-
 class CargoWiseConnection:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
@@ -26,6 +25,12 @@ class CargoWiseConnection:
         self.url = url
     
 
+    def decode_response(
+        text : str
+    ):
+        pass
+
+
     def post(
         self,
         data : str,
@@ -35,10 +40,10 @@ class CargoWiseConnection:
             url=self.url,
             headers={
                 "Authorization" : f"Basic {self.token}",
-                "Content-Type" : "text/xml; charset=utf-8",
-                "Accept" : "text/xml, charset=utf-8"
+                "Content-Type" : "text/xml",
+                "Accept" : "text/xml"
             },
-            data = data.encode("utf-8")
+            data = data
         )
 
         response.raise_for_status()
@@ -67,8 +72,10 @@ if __name__ == "__main__":
         )
     
     DUMMY_DATA_FILE = Path(r"\\venus\Natrio\IT\eAdaptor\XML\Sample Universal XML\US_BOL_Context_BookingParty.xml")
-    with open(DUMMY_DATA_FILE, "r", encoding="utf-8") as f:
+    with open(DUMMY_DATA_FILE, "r") as f:
         DUMMY_DATA = f.read()
+    
+    OUT_PATH = Path(__file__).parent / "result.xml"
 
     conn = CargoWiseConnection(CW_URL, CW_USER, CW_PASS)
     
@@ -76,5 +83,8 @@ if __name__ == "__main__":
         DUMMY_DATA
     )
 
-    print(result.status_code)
-    print(result.text)
+    # print(result.status_code)
+    # print(result.text)
+
+    with open(OUT_PATH, "w") as f:
+        f.write(result.text)
