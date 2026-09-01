@@ -1,19 +1,40 @@
 import base64
 from datetime import timedelta
 from pathlib import Path
+from xml.etree import ElementTree as Tree
 
 import requests
 from parser import parse_cw_response
 from requests import Response
-from schemas import UniversalResponse
+from schemas import (
+    UniversalActivity,
+    UniversalEvent,
+    UniversalResponse,
+    UniversalShipment,
+    UniversalTransaction,
+    UniversalTransactionBatch,
+)
+from xsdata_pydantic.bindings import XmlSerializer
+from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
 
+CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch
+
+CW_NAMESPACE = "http://www.cargowise.com/Schemas/Universal/2011/11"
+
+serializer = XmlSerializer(
+    config=SerializerConfig(
+        xml_declaration=False,
+        xml_version="1.1",
+        indent="  "
+    )
+)
 
 class CargoWiseConnection:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
     interface.
     """
-    
+
     def __init__(
         self,
         url : str,
@@ -27,12 +48,48 @@ class CargoWiseConnection:
 
         self.url = url
     
+    
+    def _serialize_cargowise_object(
+        self,
+        data : CargoWiseObject
+    ) -> str:
+        try:
+            xml_string = serializer.render(
+                data,
+                ns_map={None: CW_NAMESPACE}
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to serialise XML object: {str(e)}")
+        
+        return xml_string
+
 
     def post(
         self,
-        data : str,
+        data : CargoWiseObject,
         timeout : timedelta = timedelta(minutes=2)
     ) -> UniversalResponse:
+        """
+        Push a new object to CargoWise One through
+        the eAdaptor using HTTP+XML transport.
+
+        Args:
+            data (CargoWiseObject):
+                The Universal XML object to push.
+            timeout (timedelta, optional):
+                How long to wait for the request to finish.
+                Defaults to 2 minutes.
+
+        Raises:
+            ValueError: Failed to serialise Universal XML object.
+            HTTPError: Received a non-200 response from the CW1 API.
+            ValueError: eAdaptor returned no response content.
+            ValueError: Failed to parse eAdaptor response from XML string.
+
+        Returns:
+            UniversalResponse: The eAdaptor's response.
+        """
+        xml_string = self._serialize_cargowise_object(data)
 
         response : Response = requests.post(
             url=self.url,
@@ -41,7 +98,8 @@ class CargoWiseConnection:
                 "Content-Type" : "text/xml",
                 "Accept" : "text/xml"
             },
-            data = data
+            data = xml_string,
+            timeout = timeout.total_seconds()
         )
 
         response.raise_for_status()
@@ -55,9 +113,11 @@ class CargoWiseConnection:
 
 
 if __name__ == "__main__":
+    from datetime import datetime, timezone
     import os
 
     from dotenv import load_dotenv
+    from schemas import Event
 
     load_dotenv()
 
@@ -74,17 +134,27 @@ if __name__ == "__main__":
             "filled in values for CW_EADAPTOR_URL, "
             "CW_EADAPTOR_USER, and CW_EADAPTOR_PASS."
         )
-    
-    DUMMY_DATA_FILE = Path(r"\\venus\Natrio\IT\eAdaptor\XML\Sample Universal XML\US_BOL_Context_BookingParty.xml")
-    with open(DUMMY_DATA_FILE, "r") as f:
-        DUMMY_DATA = f.read()
-    
-    OUT_PATH = Path(__file__).parent / "result.xml"
 
     conn = CargoWiseConnection(CW_URL, CW_USER, CW_PASS)
     
-    result = conn.post(
-        DUMMY_DATA
+    # DUMMY_DATA_FILE = Path(r"\\venus\Natrio\IT\eAdaptor\XML\Sample Universal XML\US_BOL_Context_BookingParty.xml")
+    # with open(DUMMY_DATA_FILE, "r") as f:
+    #     DUMMY_DATA = f.read()
+    
+    DUMMY_DATA = UniversalEvent(
+        event=Event(
+            event_time=datetime.now(timezone.utc).isoformat(),
+            event_type="ABC"
+        )
     )
 
-    print(result.status)
+    result = conn._serialize_cargowise_object(DUMMY_DATA)#post(DUMMY_DATA)
+
+    OUT_PATH = Path(__file__).parent / "test" / "result2.xml"
+
+    with open(OUT_PATH, "w") as f:
+        f.write(result)
+    
+    result = conn.post(DUMMY_DATA)
+
+    print(result)
