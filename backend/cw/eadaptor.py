@@ -34,6 +34,11 @@ class CargoWiseConnection:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
     interface.
+
+    Args:
+        url (str):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
+        username (str): CargoWise Username
+        password (str): CargoWise Password
     """
 
     def __init__(
@@ -42,6 +47,14 @@ class CargoWiseConnection:
         username : str,
         password : str
     ):
+        """
+        Create a new CargoWise eAdaptor connection.
+
+        Args:
+            url (str):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
+            username (str): CargoWise Username
+            password (str): CargoWise Password
+        """
 
         self.token = base64.b64encode(
             f"{username}:{password}".encode("iso-8859-1")
@@ -54,6 +67,24 @@ class CargoWiseConnection:
         self,
         data : CargoWiseObject
     ) -> str:
+        """
+        Convert a Pydantic BaseModel representation of a
+        Universal XML Object (see eAdaptor Developer's Guide)
+        into an XML string which can be sent to the eAdaptor
+        through a HTTP POST request to post data to CargoWise.
+
+        Args:
+            data (CargoWiseObject):
+                A Pydantic BaseModel representing a Universal
+                XML Event, Transaction, Transaction Batch,
+                Shipment, or Activity.
+
+        Raises:
+            ValueError: The object could not be serialised.
+
+        Returns:
+            str: The XML string.
+        """
         try:
             xml_string = serializer.render(
                 data,
