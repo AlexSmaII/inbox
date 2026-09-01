@@ -29,6 +29,8 @@ serializer = XmlSerializer(
     )
 )
 
+class eAdaptorError(Exception): pass
+
 class CargoWiseConnection:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
@@ -91,7 +93,7 @@ class CargoWiseConnection:
         """
         xml_string = self._serialize_cargowise_object(data)
 
-        response : Response = requests.post(
+        http_response : Response = requests.post(
             url=self.url,
             headers={
                 "Authorization" : f"Basic {self.token}",
@@ -102,14 +104,20 @@ class CargoWiseConnection:
             timeout = timeout.total_seconds()
         )
 
-        response.raise_for_status()
+        http_response.raise_for_status()
 
-        if not response.text:
+        if not http_response.text:
             raise ValueError("CW1 eAdaptor returned no XML response")
 
-        response_data : UniversalResponse = parse_cw_response(response.text)
+        response : UniversalResponse = parse_cw_response(http_response.text)
 
-        return response_data
+        if response.status == "ERR":
+            raise eAdaptorError(
+                "Failed to push data to CargoWise. Traceback:\n"
+                f"{response.processing_log}"
+            )
+
+        return response
 
 
 if __name__ == "__main__":
@@ -157,4 +165,4 @@ if __name__ == "__main__":
     
     result = conn.post(DUMMY_DATA)
 
-    print(result)
+    # print(result.model_dump_json(indent=4))
