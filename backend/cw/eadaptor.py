@@ -28,9 +28,7 @@ serializer = XmlSerializer(
     )
 )
 
-class eAdaptorError(Exception): pass
-
-class CargoWiseConnection:
+class eAdaptor:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
     interface.
@@ -40,6 +38,8 @@ class CargoWiseConnection:
         username (str): CargoWise Username
         password (str): CargoWise Password
     """
+
+    class eAdaptorError(Exception): pass
 
     def __init__(
         self,
@@ -142,7 +142,7 @@ class CargoWiseConnection:
         response : UniversalResponse = parse_cw_response(http_response.text)
 
         if response.status == "ERR":
-            raise eAdaptorError(
+            raise self.eAdaptorError(
                 "Failed to push data to CargoWise. Traceback:\n"
                 f"{response.processing_log}"
             )
@@ -173,7 +173,7 @@ if __name__ == "__main__":
             "CW_EADAPTOR_USER, and CW_EADAPTOR_PASS."
         )
 
-    conn = CargoWiseConnection(CW_URL, CW_USER, CW_PASS)
+    conn = eAdaptor(CW_URL, CW_USER, CW_PASS)
     
     DUMMY_DATA = UniversalEvent(
         event=Event(
