@@ -1,6 +1,5 @@
 import base64
 from datetime import timedelta
-from pathlib import Path
 
 import requests
 from parser import parse_cw_response
