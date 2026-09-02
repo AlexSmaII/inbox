@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 
 class CargoWiseMCP:
@@ -34,7 +34,11 @@ class CargoWiseMCP:
         self.token = token
     
 
-    @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
+    @retry(
+        retry=retry_if_exception_type(requests.HTTPError),
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60)
+    )
     def mcp_query(
         self,
         jsonrpc_payload : dict[str, Any]
