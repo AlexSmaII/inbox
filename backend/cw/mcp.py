@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -227,10 +228,13 @@ if __name__ == "__main__":
         )
     
     conn = CargoWiseMCP(url=CW_MCP_URL, token=CW_MCP_TOKEN)
+    
+    result = conn.tables_list("prod")
 
-    print(
-        json.dumps(
-            conn.tables_list("prod"),
-            indent=4
-        )
-    )
+    RESULT_PATH = Path(__file__).parent / "data" / "mcp_result.json"
+    RESULT_PATH.parent.mkdir(exist_ok=True, parents=True)
+
+    with open(RESULT_PATH, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=4)
+    
+    print(f"Saved schema for CW1 prod database to {RESULT_PATH}")
