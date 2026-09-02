@@ -172,10 +172,46 @@ class CargoWiseMCP:
             )
 
         return content_json
+    
+
+    def tables_list(
+        self,
+        database_name : str,
+        limit : int = 10000
+    ) -> list[str]:
+        """
+        List the names of all tables in a
+        CargoWise database.
+
+        Args:
+            database_name (str): 'test' or 'prod'.
+            limit (int, optional):
+                Maximum number of tables to return. Defaults to 10000.
+
+        Raises:
+            self.CW1Error: No tables were found for that database.
+
+        Returns:
+            list[str]: List of all table names.
+        """
+        result = self.tool_call(
+            "cw.schema.tables",
+            {
+                "name_like" : "",
+                "top" : limit,
+                "instance" : database_name
+            }
+        )
+
+        if not "tables" in result:
+            raise self.CW1Error(f"No tables found for database: {database_name}")
         
+        tables : list[str] = result.get("tables")
+
+        return tables
+
 
 if __name__ == "__main__":
-
     load_dotenv()
 
     class MissingConfiguration(Exception): pass
@@ -193,11 +229,8 @@ if __name__ == "__main__":
     conn = CargoWiseMCP(url=CW_MCP_URL, token=CW_MCP_TOKEN)
 
     print(
-        json.dumps(conn.tool_call(
-            "cw.schema.tables",
-            {
-                "name_like" : "CONSOL",
-                "instance" : "prod"
-            }
-        ), indent=4)
+        json.dumps(
+            conn.tables_list("prod"),
+            indent=4
+        )
     )
