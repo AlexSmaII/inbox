@@ -1,11 +1,17 @@
 import json
 import os
-from pathlib import Path
 from typing import Any
 
 import requests
 from dotenv import load_dotenv
+from pydantic import BaseModel
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+
+
+class CargoWiseColumn(BaseModel):
+    name : str
+    type : str
+    length : int | None
 
 
 class CargoWiseMCP:
@@ -174,10 +180,44 @@ class CargoWiseMCP:
 
         return content_json
     
+    
+    def table_describe(
+        self,
+        table_name : str,
+        instance : str = "prod",
+        limit : int = 10000
+    ) -> list[CargoWiseColumn]:
+        
+        result = self.tool_call(
+            "cw.schema.search",
+            {
+                ""
+                "column_like" : "",
+                "table_like" : table_name,
+                "top" : limit,
+                "instance" : instance
+            }
+        )
+
+        columns_raw = result.get("columns")
+
+        if not columns_raw:
+            raise self.CW1Error(f"No columns found for table {instance}.{table_name}")
+        
+        columns = [
+            CargoWiseColumn(
+                name   = c["column"],
+                type   = c["type"],
+                length = c["length"]
+            ) for c in columns_raw
+        ]
+
+        return columns
+
 
     def tables_list(
         self,
-        database_name : str,
+        instance : str = "prod",
         limit : int = 10000
     ) -> list[str]:
         """
@@ -185,7 +225,7 @@ class CargoWiseMCP:
         CargoWise database.
 
         Args:
-            database_name (str): 'test' or 'prod'.
+            instance (str): 'test' or 'prod'.
             limit (int, optional):
                 Maximum number of tables to return. Defaults to 10000.
 
@@ -200,17 +240,17 @@ class CargoWiseMCP:
             {
                 "name_like" : "",
                 "top" : limit,
-                "instance" : database_name
+                "instance" : instance
             }
         )
 
         if not "tables" in result:
-            raise self.CW1Error(f"No tables found for database: {database_name}")
+            raise self.CW1Error(f"No tables found for database: {instance}")
         
         tables : list[str] = result.get("tables")
 
         return tables
-
+        
 
 if __name__ == "__main__":
     load_dotenv()
