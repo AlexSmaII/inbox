@@ -39,7 +39,7 @@ class eAdaptor:
         password (str): CargoWise Password
     """
 
-    class eAdaptorError(Exception): pass
+    class CW1Error(Exception): pass
 
     def __init__(
         self,
@@ -142,8 +142,8 @@ class eAdaptor:
         response : UniversalResponse = parse_cw_response(http_response.text)
 
         if response.status == "ERR":
-            raise self.eAdaptorError(
-                "Failed to push data to CargoWise. Traceback:\n"
+            raise self.CW1Error(
+                "Error querying CargoWise:\n"
                 f"{response.processing_log}"
             )
 
@@ -152,10 +152,8 @@ class eAdaptor:
 
 if __name__ == "__main__":
     import os
-    from datetime import datetime, timezone
 
     from dotenv import load_dotenv
-    from schemas import Event
 
     load_dotenv()
 
@@ -175,19 +173,31 @@ if __name__ == "__main__":
 
     conn = eAdaptor(CW_URL, CW_USER, CW_PASS)
     
-    DUMMY_DATA = UniversalEvent(
-        event=Event(
-            event_time=datetime.now(timezone.utc).isoformat(),
-            event_type="ARV"
+    from schemas import (
+        DataContext,
+        DocumentRequest,
+        # Event,
+        UniversalDocumentRequest,
+        # UniversalEvent,
+    )
+    
+    QUERY = UniversalDocumentRequest(
+        document_request=DocumentRequest(
+            data_context=DataContext()
         )
     )
 
-    result = conn._serialize_cargowise_object(DUMMY_DATA)
+    # DUMMY_DATA = UniversalEvent(
+    #     event=Event(
+    #         event_time=datetime.now(timezone.utc).isoformat(),
+    #         event_type="ARV"
+    #     )
+    # )
 
-    print("Pushing XML object to CargoWise:")
-    print(result)
+    print("Sending query to CargoWise:")
+    print(conn._serialize_cargowise_object(QUERY))
     
-    result = conn.post(DUMMY_DATA)
+    result = conn.post(QUERY)
 
     print("Received successful response:")
     print(result.model_dump_json(indent=4))
