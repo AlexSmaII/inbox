@@ -561,3 +561,5 @@ __all__ = [
     "UniversalTransactionBatchRequest",
     "UniversalTransactionBatchRequestData",
 ]
+
+CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch

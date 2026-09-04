@@ -1,25 +1,72 @@
-def generate_connection_string(
-    server_url : str,
-    username : str,
-    password : str,
-    database_name : str,
-    driver : str = "ODBC Driver 18 for SQL Server"
-) -> str:
+import pandas as pd
 
-    parts = [
-        f"DRIVER={{{driver}}}",
-        f"SERVER={server_url}",
-        "Encrypt=yes",
-        "TrustServerCertificate=yes",
-    ]
-    if database_name:
-        parts.insert(2, f"DATABASE={database_name}")
 
-    # parts.append("Trusted_Connection=yes")
-    parts.append(f"UID={username}")
-    parts.append(f"PWD={password}")
+class CargoReader:
+    """
+    Connection to CargoWise One Microsoft SQL
+    Server Database used for reading objects.
 
-    return ";".join(parts) + ";"
+    Args:
+        server_name (str):   Server Name.
+        username (str):      Username.
+        password (str):      Password.
+        database_name (str): Database Name.
+    """   
+
+    def __init__(
+        self,
+        server_name    : str,
+        username      : str,
+        password      : str,
+        database_name : str
+    ):
+        """
+        Establish a connection with the
+        Microsoft SQL Server Database.
+
+        Args:
+            server_name (str):   Server Name.
+            username (str):      Username.
+            password (str):      Password.
+            database_name (str): Database Name.
+        """        
+        
+        import sqlalchemy
+        from sqlalchemy.engine import URL
+
+        url = URL.create(
+            drivername="mssql+pyodbc",
+            username=username,
+            password=password,
+            host=server_name,
+            database=database_name,
+            query={
+                "driver" : "ODBC Driver 18 for SQL Server",
+                "Encrypt" : "yes",
+                "TrustServerCertificate" : "yes"
+            }
+        )
+
+        engine = sqlalchemy.create_engine(url)
+
+        self.connection = engine.connect()
+    
+
+    def query(
+        self,
+        query : str
+    ) -> pd.DataFrame:
+        """
+        Execute a SQL query on the database
+        and return the result as a DataFrame.
+
+        Args:
+            query (str): The SQL query.
+
+        Returns:
+            pd.DataFrame: The query result.
+        """
+        return pd.read_sql(query, self.connection)
 
 
 if __name__ == "__main__":
@@ -51,31 +98,15 @@ if __name__ == "__main__":
             f"{[i for i in connection_variables if os.getenv(i) is None]}"
         )
 
-    import sqlalchemy
-    from sqlalchemy.engine import URL
-
-    url = URL.create(
-        drivername="mssql+pyodbc",
-        username=USER,
-        password=PASS,
-        host=SERVER,
-        database=DBNAME,
-        query={
-            "driver" : "ODBC Driver 18 for SQL Server",
-            "Encrypt" : "yes",
-            "TrustServerCertificate" : "yes"
-        }
+    conn = CargoReader(
+        SERVER, USER, PASS, DBNAME
     )
-
-    engine = sqlalchemy.create_engine(url)
-
-    conn = engine.connect()
 
     query = """
 SELECT TOP 10 * FROM dbo.StorageDocs WHERE
 SC_DocType = 'POD' ORDER BY SC_Date DESC;
     """
 
-    result = pd.read_sql(query, conn)
+    result = conn.query(query)
 
     print(result)

@@ -5,39 +5,24 @@ import requests
 from parser import parse_cw_response
 from requests import Response
 from schemas import (
-    UniversalActivity,
-    UniversalEvent,
+    CargoWiseObject,
     UniversalResponse,
-    UniversalShipment,
-    UniversalTransaction,
-    UniversalTransactionBatch,
 )
 from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
 from xsdata_pydantic.bindings import XmlSerializer
 
-CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch
 
-CW_NAMESPACE = "http://www.cargowise.com/Schemas/Universal/2011/11"
-
-serializer = XmlSerializer(
-    config=SerializerConfig(
-        xml_declaration=False,
-        xml_version="1.1",
-        indent="  "
-    )
-)
-
-class eAdaptor:
+class CargoWriter:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
-    interface.
+    interface used for writing objects.
 
     Args:
         url (str):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
         username (str): CargoWise Username
         password (str): CargoWise Password
     """
-
+    
     class CW1Error(Exception): pass
 
     def __init__(
@@ -60,7 +45,17 @@ class eAdaptor:
         ).decode("ascii")
 
         self.url = url
-    
+
+        self.CW_NAMESPACE = "http://www.cargowise.com/Schemas/Universal/2011/11"
+
+        self.serializer = XmlSerializer(
+            config=SerializerConfig(
+                xml_declaration=False,
+                xml_version="1.1",
+                indent="  "
+            )
+        )
+
     
     def _serialize_cargowise_object(
         self,
@@ -85,9 +80,9 @@ class eAdaptor:
             str: The XML string.
         """
         try:
-            xml_string = serializer.render(
+            xml_string = self.serializer.render(
                 data,
-                ns_map={None: CW_NAMESPACE}
+                ns_map={None: self.CW_NAMESPACE}
             )
         except Exception as e:
             raise ValueError(f"Failed to serialise XML object: {e!s}")
@@ -170,7 +165,7 @@ if __name__ == "__main__":
             "CW_EADAPTOR_USER, and CW_EADAPTOR_PASS."
         )
 
-    conn = eAdaptor(CW_URL, CW_USER, CW_PASS)
+    conn = CargoWriter(CW_URL, CW_USER, CW_PASS)
     
     from schemas import (
         DataContext,
