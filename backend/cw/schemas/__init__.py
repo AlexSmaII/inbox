@@ -293,6 +293,8 @@ from cw.schemas.universal_transaction_batch_request import (
     UniversalTransactionBatchRequestData,
 )
 
+CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch
+
 __all__ = [
     "UniversalActivity",
     "UniversalActivityData",
@@ -318,6 +320,7 @@ __all__ = [
     "Branch",
     "Cscreexamination",
     "Capability",
+    "CargoWiseObject",
     "CarrierAccount",
     "CashAdvanceRequestHeader",
     "CashAdvanceRequestLine",
@@ -561,5 +564,3 @@ __all__ = [
     "UniversalTransactionBatchRequest",
     "UniversalTransactionBatchRequestData",
 ]
-
-CargoWiseObject = UniversalActivity | UniversalEvent | UniversalShipment | UniversalResponse | UniversalTransaction | UniversalTransactionBatch
