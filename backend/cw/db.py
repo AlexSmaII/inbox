@@ -2,8 +2,8 @@ def generate_connection_string(
     server_url : str,
     username : str,
     password : str,
-    driver : str = "ODBC Driver 18 for SQL Server",
-    database_name : str | None = None
+    database_name : str,
+    driver : str = "ODBC Driver 18 for SQL Server"
 ) -> str:
 
     parts = [
@@ -26,52 +26,56 @@ if __name__ == "__main__":
 
     import os
 
+    import pandas as pd
     from dotenv import load_dotenv
 
     load_dotenv()
 
     class MissingConfiguration(Exception): pass
 
+    use_prod : bool = True
+    name = "PROD" if use_prod else "TEST"
+    
+    connection_variables = [
+        f"CW_DB_{name}_SERVER",
+        f"CW_DB_{name}_USER",
+        f"CW_DB_{name}_PASSWORD",
+        f"CW_DB_{name}_DATABASE"
+    ]
+
     try:
-        USER   = os.environ["CW_DB_TEST_USER"]
-        PASS   = os.environ["CW_DB_TEST_PASSWORD"]
-        SERVER = os.environ["CW_DB_TEST_SERVER"]
+        SERVER, USER, PASS, DBNAME = [os.environ[i] for i in connection_variables]
     except KeyError:
         raise MissingConfiguration(
             "Missing environment variables: "
-            "CW_DB_TEST_USER, CW_DB_TEST_PASSWORD, "
-            "CW_DB_TEST_SERVER"
+            f"{[i for i in connection_variables if os.getenv(i) is None]}"
         )
 
-    import pyodbc
+    import sqlalchemy
+    from sqlalchemy.engine import URL
 
-    pyodbc.connect(
-        generate_connection_string(
-            SERVER,
-            USER,
-            PASS
-        ),
-        readonly=True
+    url = URL.create(
+        drivername="mssql+pyodbc",
+        username=USER,
+        password=PASS,
+        host=SERVER,
+        database=DBNAME,
+        query={
+            "driver" : "ODBC Driver 18 for SQL Server",
+            "Encrypt" : "yes",
+            "TrustServerCertificate" : "yes"
+        }
     )
 
-    # import sqlalchemy
-    # from sqlalchemy.engine import URL
+    engine = sqlalchemy.create_engine(url)
 
-    # url = URL.create(
-    #     drivername="mssql+pyodbc",
-    #     username=USER,
-    #     password=PASS,
-    #     host="https://" + SERVER,
-    #     database="",
-    #     query={
-    #         "driver" : "ODBC Driver 18 for SQL Server",
-    #         "Encrypt" : "yes",
-    #         "TrustServerCertificate" : "yes"
-    #     }
-    # )
+    conn = engine.connect()
 
-    # print(url)
+    query = """
+SELECT TOP 10 * FROM dbo.StorageDocs WHERE
+SC_DocType = 'POD' ORDER BY SC_Date DESC;
+    """
 
-    # engine = sqlalchemy.create_engine(url)
+    result = pd.read_sql(query, conn)
 
-    # conn = engine.connect()
+    print(result)

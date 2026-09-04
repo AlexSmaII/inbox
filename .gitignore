@@ -223,3 +223,4 @@ backend/cw/data
 backend/tmp
 backend/fix.py
 docs/
+*.ipynb
