@@ -6,6 +6,7 @@ from requests import Response
 from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
 from xsdata_pydantic.bindings import XmlSerializer
 
+from cw import credentials
 from cw.parser import parse_cw_response
 from cw.schemas import (
     CargoWiseObject,
@@ -17,29 +18,47 @@ class CargoWriter:
     """
     Connection to CargoWise One eAdaptor HTTP+XML
     interface used for writing objects.
+    Uses credentials from .env by default unless
+    they are given as arguments.
 
     Args:
-        url (str):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
-        username (str): CargoWise Username
-        password (str): CargoWise Password
+        production (bool, optional):
+            Use CW1 production instance rather than test instance.
+            Only has any effect if no credentials are supplied.
+        url (str, optional):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
+        username (str, optional): CargoWise Username
+        password (str, optional): CargoWise Password
     """
     
     class CW1Error(Exception): pass
 
     def __init__(
         self,
-        url : str,
-        username : str,
-        password : str
+        production : bool = False,
+        url      : str | None = None,
+        username : str | None = None,
+        password : str | None = None
     ):
         """
         Create a new CargoWise eAdaptor connection.
+        Uses credentials from .env by default unless
+        they are given as class constructor arguments.
 
         Args:
-            url (str):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
-            username (str): CargoWise Username
-            password (str): CargoWise Password
+            production (bool, optional):
+                Use CW1 production instance rather than test instance.
+                Only has any effect if using default connection values.
+            url (str, optional):      https://YOUR_PROVIDER_NAME.wisegrid.net/eAdaptor
+            username (str, optional): CargoWise Username
+            password (str, optional): CargoWise Password
         """
+
+        if not any([
+            url, username, password
+        ]):
+            url, username, password = credentials.write(
+                production=production
+            )
 
         self.token = base64.b64encode(
             f"{username}:{password}".encode("iso-8859-1")

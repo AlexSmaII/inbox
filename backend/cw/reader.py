@@ -1,36 +1,58 @@
 import pandas as pd
 
+from cw import credentials
+
 
 class CargoReader:
     """
     Connection to CargoWise One Microsoft SQL
-    Server Database used for reading objects.
+    Server database used for reading objects.
+    Uses credentials from .env by default unless
+    they are given as arguments.
 
     Args:
-        server_name (str):   Server Name.
-        username (str):      Username.
-        password (str):      Password.
-        database_name (str): Database Name.
+        production (bool, optional):
+            Use CW1 production database rather than test database.
+            Only has any effect if using default connection values.
+        server_name (str, optional):   Server Name.
+        username (str, optional):      Username.
+        password (str, optional):      Password.
+        database_name (str, optional): Database Name.
     """   
-
+    
     def __init__(
         self,
-        server_name    : str,
-        username      : str,
-        password      : str,
-        database_name : str
+        production : bool = False,
+        server_name   : str | None = None,
+        username      : str | None = None,
+        password      : str | None = None,
+        database_name : str | None = None
     ):
         """
-        Establish a connection with the
-        Microsoft SQL Server Database.
+        Create a new CargoWise SQL Server connection.
+        Uses credentials from .env by default unless
+        they are given as class constructor arguments.
 
         Args:
-            server_name (str):   Server Name.
-            username (str):      Username.
-            password (str):      Password.
-            database_name (str): Database Name.
-        """        
+            production (bool, optional):
+                Use CW1 production database rather than test database.
+                Only has any effect if using default connection values.
+            server_name (str, optional):   Server Name.
+            username (str, optional):      Username.
+            password (str, optional):      Password.
+            database_name (str, optional): Database Name.
+        """
         
+        if not any([
+            server_name,
+            username,
+            password,
+            database_name
+        ]):
+            server_name, username, password, database_name = credentials.read(
+                production=production
+            )
+
         import sqlalchemy
         from sqlalchemy.engine import URL
 
