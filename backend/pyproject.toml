@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "cwio",
     "genai-prices>=0.1.4",
     "google-genai>=2.20.0",
     "ipykernel>=7.3.0",
@@ -23,3 +24,11 @@ dependencies = [
     "tenacity>=9.1.4",
     "xsdata-pydantic>=24.5",
 ]
+
+[tool.uv.workspace]
+members = [
+    "cwio",
+]
+
+[tool.uv.sources]
+cwio = { workspace = true, editable = true }
