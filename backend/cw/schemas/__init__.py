@@ -1,12 +1,12 @@
-from schemas.universal_activity import (
+from cw.schemas.universal_activity import (
     UniversalActivity,
     UniversalActivityData,
 )
-from schemas.universal_activity_request import (
+from cw.schemas.universal_activity_request import (
     UniversalActivityRequest,
     UniversalActivityRequestData,
 )
-from schemas.universal_common import (
+from cw.schemas.universal_common import (
     Activity,
     ActivityRequest,
     AddInfo,
@@ -245,50 +245,50 @@ from schemas.universal_common import (
     WorkflowException,
     WorkflowRequest,
 )
-from schemas.universal_document_request import (
+from cw.schemas.universal_document_request import (
     UniversalDocumentRequest,
     UniversalDocumentRequestData,
 )
-from schemas.universal_event import (
+from cw.schemas.universal_event import (
     UniversalEvent,
     UniversalEventData,
 )
-from schemas.universal_interchange import (
+from cw.schemas.universal_interchange import (
     AcknowledgementChannel,
     AcknowledgementRequired,
     UniversalInterchange,
     ValueType,
 )
-from schemas.universal_interchange_requeue_request import (
+from cw.schemas.universal_interchange_requeue_request import (
     UniversalInterchangeRequeueRequest,
     UniversalInterchangeRequeueRequestData,
 )
-from schemas.universal_response import (
+from cw.schemas.universal_response import (
     MessageNumberType,
     UniversalResponse,
     UniversalResponseData,
 )
-from schemas.universal_schedule import (
+from cw.schemas.universal_schedule import (
     UniversalSchedule,
     UniversalScheduleData,
 )
-from schemas.universal_shipment import (
+from cw.schemas.universal_shipment import (
     UniversalShipment,
     UniversalShipmentData,
 )
-from schemas.universal_shipment_request import (
+from cw.schemas.universal_shipment_request import (
     UniversalShipmentRequest,
     UniversalShipmentRequestData,
 )
-from schemas.universal_transaction import (
+from cw.schemas.universal_transaction import (
     UniversalTransaction,
     UniversalTransactionData,
 )
-from schemas.universal_transaction_batch import (
+from cw.schemas.universal_transaction_batch import (
     UniversalTransactionBatch,
     UniversalTransactionBatchData,
 )
-from schemas.universal_transaction_batch_request import (
+from cw.schemas.universal_transaction_batch_request import (
     UniversalTransactionBatchRequest,
     UniversalTransactionBatchRequestData,
 )

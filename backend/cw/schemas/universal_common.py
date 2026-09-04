@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from xsdata.models.datatype import XmlDate, XmlDateTime, XmlDuration
 from xsdata_pydantic.fields import field
 
-from schemas.universal_response import MessageNumberType
+from cw.schemas.universal_response import MessageNumberType
 
 __NAMESPACE__ = "http://www.cargowise.com/Schemas/Universal/2011/11"
 

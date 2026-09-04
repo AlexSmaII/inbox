@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 from xsdata_pydantic.fields import field
 
-from schemas.universal_common import Event
+from cw.schemas.universal_common import Event
 
 __NAMESPACE__ = "http://www.cargowise.com/Schemas/Universal/2011/11"
 

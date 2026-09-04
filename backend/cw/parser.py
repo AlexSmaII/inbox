@@ -2,8 +2,9 @@ import re
 from pathlib import Path
 from xml.etree import ElementTree as Tree
 
-from schemas import UniversalResponse
 from xsdata_pydantic.bindings import XmlParser
+
+from cw.schemas import UniversalResponse
 
 parser = XmlParser()
 

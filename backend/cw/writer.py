@@ -2,14 +2,15 @@ import base64
 from datetime import timedelta
 
 import requests
-from parser import parse_cw_response
 from requests import Response
-from schemas import (
+from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
+from xsdata_pydantic.bindings import XmlSerializer
+
+from cw.parser import parse_cw_response
+from cw.schemas import (
     CargoWiseObject,
     UniversalResponse,
 )
-from xsdata.formats.dataclass.serializers.mixins import SerializerConfig
-from xsdata_pydantic.bindings import XmlSerializer
 
 
 class CargoWriter:
@@ -167,7 +168,7 @@ if __name__ == "__main__":
 
     conn = CargoWriter(CW_URL, CW_USER, CW_PASS)
     
-    from schemas import (
+    from cw.schemas import (
         DataContext,
         DocumentRequest,
         # Event,
