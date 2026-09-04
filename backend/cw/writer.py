@@ -154,16 +154,18 @@ if __name__ == "__main__":
 
     class MissingConfiguration(Exception): pass
 
+    connection_variables = [
+        "CW_EADAPTOR_URL",
+        "CW_EADAPTOR_USER",
+        "CW_EADAPTOR_PASS"
+    ]
+
     try:
-        CW_URL  = os.environ["CW_EADAPTOR_URL"]
-        CW_USER = os.environ["CW_EADAPTOR_USER"]
-        CW_PASS = os.environ["CW_EADAPTOR_PASS"]
+        CW_URL, CW_USER, CW_PASS = [os.environ[i] for i in connection_variables]
     except KeyError:
         raise MissingConfiguration(
-            "CargoWise MCP credentials not found. "
-            "Please ensure .env exists and that you have "
-            "filled in values for CW_EADAPTOR_URL, "
-            "CW_EADAPTOR_USER, and CW_EADAPTOR_PASS."
+            "Missing environment variables: "
+            f"{[i for i in connection_variables if os.getenv(i) is None]}"
         )
 
     conn = CargoWriter(CW_URL, CW_USER, CW_PASS)
