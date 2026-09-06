@@ -4,3 +4,6 @@
 [submodule "NATRIO_2614_Cargowise-MCP"]
 	path = cw_mcp
 	url = https://github.com/Natrio-Asia-Pacific/NATRIO_2614_Cargowise-MCP/
+[submodule "backend/cwio"]
+	path = backend/cwio
+	url = https://github.com/AlexSmaII/cwio/

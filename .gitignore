@@ -219,5 +219,8 @@ __marimo__/
 
 !backend/data/labels.json
 backend/data
+backend/cw/data
 backend/tmp
 backend/fix.py
+docs/
+*.ipynb
