@@ -1,0 +1,31 @@
+# Sample Data
+backend/data
+
+# Python artefacts
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.venv
+**/venv
+
+# Jupyter Notebooks
+**/.ipynb_checkpoints
+**/*.ipynb
+
+# Secrets
+**/.env
+**/.env.*
+
+# Git Artefacts
+.git
+.gitignore
+.gitmodules
+
+# Documentation
+docs
+skills
+.okf
+cw_mcp
+*.md
