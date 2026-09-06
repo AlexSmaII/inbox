@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "cwio",
+    "fastapi[standard]>=0.141.1",
     "genai-prices>=0.1.4",
     "google-genai>=2.20.0",
     "ipykernel>=7.3.0",
