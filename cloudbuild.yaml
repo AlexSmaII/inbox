@@ -12,7 +12,7 @@ substitutions:
   _IMAGE_NAME: natrio-asia-pacific-natrio_2629_op-pod-automation/natrio-pod-automation
   _REGION: australia-southeast1
   _REPOSITORY: cloud-run-source-deploy
-  _SERVICE_NAME: natrio-pod-automation
+  _SERVICE_NAME: pod-scanner
 
 steps:
   # The cwio package is a git submodule and a uv workspace member, so the
