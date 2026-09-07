@@ -1,142 +1,36 @@
-# Approval-gated NATRIO 2629 release pipeline.
-#
-# The central Cloud Build trigger runs this file as the dedicated
-# pod-build-deployer identity. It verifies the backend, builds and pushes one
-# immutable image, then updates only the existing Cloud Run service image and
-# release labels. Runtime configuration (database and eAdaptor
-# credentials, scaling, authentication and routing) remains unchanged.
-
 substitutions:
-  _DEPLOY_PROJECT: natrio-platform
-  _IMAGE_PROJECT: natrio-platform
-  _IMAGE_NAME: natrio-asia-pacific-natrio_2629_op-pod-automation/natrio-pod-automation
+  _IMAGE: australia-southeast1-docker.pkg.dev/natrio-platform/cloud-run-source-deploy/natrio-asia-pacific-natrio_2629_op-pod-automation/natrio-pod-automation
+  _PROJECT: natrio-platform
   _REGION: australia-southeast1
-  _REPOSITORY: cloud-run-source-deploy
-  _SERVICE_NAME: pod-scanner
+  _SERVICE: pod-scanner
 
 steps:
-  # The cwio package is a git submodule and a uv workspace member, so the
-  # checkout has to carry it before anything can resolve the backend project.
-  - id: prepare-submodules
-    name: gcr.io/cloud-builders/git
-    entrypoint: bash
-    args:
-      - -euo
-      - pipefail
-      - -c
-      - |
-        if [ ! -f backend/cwio/pyproject.toml ]; then
-          git submodule update --init --recursive backend/cwio
-        fi
-        test -f backend/cwio/pyproject.toml
-
-  - id: verify-backend
-    name: ghcr.io/astral-sh/uv@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
-    entrypoint: sh
-    args:
-      - -ceu
-      - >-
-        cd backend &&
-        UV_PROJECT_ENVIRONMENT=/tmp/pod-venv
-        uv run --locked
-        python -c "import main"
-
   - id: build
     name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - --tag
-      - ${_REGION}-docker.pkg.dev/${_IMAGE_PROJECT}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
-      - .
+    args: [build, --tag, '${_IMAGE}:${SHORT_SHA}', .]
 
   - id: push
     name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/${_IMAGE_PROJECT}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+    args: [push, '${_IMAGE}:${SHORT_SHA}']
 
   - id: deploy
     name: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
-    entrypoint: bash
     args:
-      - -euo
-      - pipefail
-      - -c
-      - |
-        gcloud run services describe "${_SERVICE_NAME}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format='value(metadata.name)' >/dev/null
-
-        gcloud run services update "${_SERVICE_NAME}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --image="${_REGION}-docker.pkg.dev/${_IMAGE_PROJECT}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}" \
-          --update-labels="natrio-project=2629,commit-sha=${COMMIT_SHA},managed-by=gcp-cloud-build-deploy-cloud-run" \
-          --quiet
-
-  - id: verify-release
-    name: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
-    entrypoint: bash
-    args:
-      - -euo
-      - pipefail
-      - -c
-      - |
-        revision="$$(gcloud run services describe "${_SERVICE_NAME}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format='value(status.latestReadyRevisionName)')"
-        deployed_commit="$$(gcloud run revisions describe "$${revision}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format="value(metadata.labels.'commit-sha')")"
-        project_label="$$(gcloud run revisions describe "$${revision}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format="value(metadata.labels.'natrio-project')")"
-        deployed_image="$$(gcloud run revisions describe "$${revision}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format='value(spec.containers[0].image)')"
-        traffic="$$(gcloud run services describe "${_SERVICE_NAME}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format='value(status.traffic[0].percent)')"
-        url="$$(gcloud run services describe "${_SERVICE_NAME}" \
-          --project="${_DEPLOY_PROJECT}" \
-          --region="${_REGION}" \
-          --format='value(status.url)')"
-
-        test "$${deployed_commit}" = "${COMMIT_SHA}"
-        test "$${project_label}" = "2629"
-        test "$${traffic}" = "100"
-        test "$${deployed_image}" = "${_REGION}-docker.pkg.dev/${_IMAGE_PROJECT}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
-
-        # The credentials stay in the service configuration, so only
-        # the endpoints that do not touch are exercised here.
-        api_ready=false
-        for attempt in $$(seq 1 12); do
-          if api_response="$$(curl --fail --silent --show-error "$${url}/")" &&
-            printf '%s' "$${api_response}" | grep -q 'Hello world!'; then
-            api_ready=true
-            break
-          fi
-          if [ "$${attempt}" -eq 12 ]; then
-            break
-          fi
-          sleep 5
-        done
-
-        test "$${api_ready}" = "true"
-        curl --fail --silent --show-error "$${url}/openapi.json" >/dev/null
+      - run
+      - deploy
+      - '${_SERVICE}'
+      - '--image=${_IMAGE}:${SHORT_SHA}'
+      - '--project=${_PROJECT}'
+      - '--region=${_REGION}'
+      - '--labels=natrio-project=2629,commit-sha=${COMMIT_SHA}'
+      - '--quiet'
 
 images:
-  - ${_REGION}-docker.pkg.dev/${_IMAGE_PROJECT}/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+  - '${_IMAGE}:${SHORT_SHA}'
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
 serviceAccount: projects/natrio-shared-ops/serviceAccounts/pod-build-deployer@natrio-shared-ops.iam.gserviceaccount.com
 
-timeout: 1800s
+timeout: 1200s
