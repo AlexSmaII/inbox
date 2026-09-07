@@ -15,6 +15,7 @@ steps:
 
   - id: deploy
     name: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+    entrypoint: gcloud
     args:
       - run
       - deploy
