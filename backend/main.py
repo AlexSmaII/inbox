@@ -1,5 +1,5 @@
 from cwio import CargoReader, CargoWriter
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pandas import DataFrame
 from pydantic import BaseModel
 
@@ -13,32 +13,48 @@ async def root():
 async def test_read(
     production : bool = True
 ):
-    reader = CargoReader(production)
+    try:
+        reader = CargoReader(production)
 
-    result : DataFrame = reader.query(
-        "SELECT TOP 5 SC_FileName, SC_Date FROM dbo.StorageDocs WHERE SC_DocType = 'POD' ORDER BY SC_Date DESC;"
-    )
+        result : DataFrame = reader.query(
+            "SELECT TOP 5 SC_FileName, SC_Date FROM dbo.StorageDocs WHERE SC_DocType = 'POD' ORDER BY SC_Date DESC;"
+        )
 
-    return result.to_dict()
+        return result.to_dict()
+    
+    except Exception as e:
+
+        return HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.get("/test_write")
 async def test_write(
     production : bool = False
 ):
-    from cwio.schemas import Activity, UniversalActivity
+    try:
+        from cwio.schemas import Activity, UniversalActivity
 
-    writer = CargoWriter(production)
+        writer = CargoWriter(production)
 
-    result : BaseModel = writer.post(
-        UniversalActivity(
-            activity=Activity(
-                summary = "TEST SUMMARY",
-                description = "TEST DESCRIPTION"
+        result : BaseModel = writer.post(
+            UniversalActivity(
+                activity=Activity(
+                    summary = "TEST SUMMARY",
+                    description = "TEST DESCRIPTION"
+                )
             )
         )
-    )
 
-    return result.model_dump()
+        return result.model_dump()
+    
+    except Exception as e:
+
+        return HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
     
 
