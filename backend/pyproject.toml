@@ -1,7 +1,7 @@
 [project]
 name = "pod-automation"
 version = "0.1.0"
-description = "Add your description here"
+description = "Extracts data from scanned POD dockets and pushes them to CW1 eDocs"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
