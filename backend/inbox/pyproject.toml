@@ -1,7 +1,7 @@
 [project]
 name = "inbox"
 version = "0.1.0"
-description = "Add your description here"
+description = "Reads emails and attachments from a Microsoft Outlook inbox"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
