@@ -1,5 +1,7 @@
 from cwio import CargoReader, CargoWriter
 from fastapi import FastAPI, HTTPException
+from inbox import PODInbox
+from msgraph.generated.models.message import Message
 from pandas import DataFrame
 from pydantic import BaseModel
 
@@ -8,6 +10,24 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"message": "Hello world!"}
+
+@app.get("/emails")
+async def get_emails():
+    try:
+        inbox = PODInbox()
+        emails : list[Message] = await inbox.get_emails()
+        return [
+            {
+                "subject" : e.subject,
+                "received" : e.received_date_time,
+                "body" : e.body_preview
+            } for e in emails
+        ]
+    except Exception as e:
+        return HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.get("/test_read")
 async def test_read(

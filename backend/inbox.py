@@ -6,6 +6,8 @@ import asyncio
 import credentials
 from azure.identity.aio import ClientSecretCredential
 from msgraph import GraphServiceClient
+from msgraph.generated.models.message_collection_response import MessageCollectionResponse
+from msgraph.generated.models.message import Message
 
 
 class PODInbox:
@@ -37,8 +39,11 @@ class PODInbox:
     #     access_token : AccessToken = await self.client_credential.get_token(graph_scope)
     #     return access_token.token
     
-    async def get_emails(self) -> str:
-        messages = await self.app_client.users.by_user_id("files@axima.com.au").mail_folders.by_mail_folder_id('inbox').messages.get()
+    async def get_emails(self) -> list[Message]:
+        result : MessageCollectionResponse | None = await self.app_client.users.by_user_id("files@axima.com.au").mail_folders.by_mail_folder_id('inbox').messages.get()
+        if not result: raise ValueError("No emails found")
+        messages : list[Message] | None = result.value
+        if not messages: raise ValueError("No emails found")
 
         return messages
 
@@ -46,7 +51,10 @@ class PODInbox:
 async def main():
     client = PODInbox()
 
-    print(await client.get_emails())
+    emails : list[Message] = client.get_emails()
+
+    for email in emails:
+        print(email)
 
 
 if __name__ == "__main__":
