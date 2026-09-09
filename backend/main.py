@@ -20,7 +20,9 @@ async def get_emails():
             {
                 "subject" : e.subject,
                 "received" : e.received_date_time,
-                "body" : e.body_preview
+                "body" : e.body_preview,
+                "has_attachments" : e.has_attachments,
+                "attachments" : e.attachments
             } for e in emails
         ]
     except Exception as e:
