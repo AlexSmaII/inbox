@@ -10,12 +10,7 @@ from google.genai.types import (
     GenerateContentResponse,
     GenerateContentResponseUsageMetadata,
 )
-from models import (
-    Docket,
-    DocketBase,
-    DocketClassification,
-    ModelCall
-)
+from models import DocketBase, DocketClassification, ModelCall
 from PIL import Image
 
 from .base import PODClassifier
@@ -136,7 +131,7 @@ class GeminiPODClassifier(PODClassifier):
                 print(f"Traceback: {e!s}")
                 
                 if i == retries - 1:
-                    raise e
+                    raise
             
             finally:
                 sleep(retry_cooldown.total_seconds())
