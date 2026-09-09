@@ -1,6 +1,6 @@
 from cwio import CargoReader, CargoWriter
 from fastapi import FastAPI, HTTPException
-from inbox import PODInbox
+from inbox import OutlookInbox
 from msgraph.generated.models.message import Message
 from pandas import DataFrame
 from pydantic import BaseModel
@@ -14,7 +14,7 @@ async def root():
 @app.get("/emails")
 async def get_emails():
     try:
-        inbox = PODInbox()
+        inbox = OutlookInbox()
         emails : list[Message] = await inbox.get_emails()
         return [
             {

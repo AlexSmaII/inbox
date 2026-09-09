@@ -10,10 +10,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 POD_INBOX = [
-    "POD_INBOX_EMAIL_ADDRESS",
-    "POD_INBOX_CLIENT_ID",
-    "POD_INBOX_TENANT_ID",
-    "POD_INBOX_CLIENT_SECRET"
+    "OUTLOOK_INBOX_EMAIL_ADDRESS",
+    "OUTLOOK_INBOX_CLIENT_ID",
+    "OUTLOOK_INBOX_TENANT_ID",
+    "OUTLOOK_INBOX_CLIENT_SECRET"
 ]
 
 class MissingCredentials(Exception): pass

@@ -1,10 +1,6 @@
-# https://learn.microsoft.com/en-us/graph/tutorials/python-app-only
-# https://learn.microsoft.com/en-us/graph/tutorials/python-email
-
 import asyncio
 from pathlib import Path
 
-import credentials
 from azure.identity.aio import ClientSecretCredential
 from msgraph import GraphServiceClient
 from msgraph.generated.models.attachment import Attachment
@@ -20,8 +16,10 @@ from msgraph.generated.users.item.user_item_request_builder import (
     UserItemRequestBuilder,
 )
 
+from inbox import credentials
 
-class OutlookClient:
+
+class OutlookInbox:
     def __init__(
         self,
         email_address : str | None = None,
@@ -120,9 +118,8 @@ class OutlookClient:
         return out_path
     
 
-
 async def main():
-    client = OutlookClient()
+    client = OutlookInbox()
 
     emails : list[Message] = await client.get_emails()
 
@@ -144,8 +141,6 @@ async def main():
                     client.save_attachment(attachment, ATTACHMENT_PATH)
                 except Exception as e:
                     pass
-
-
 
 
 if __name__ == "__main__":

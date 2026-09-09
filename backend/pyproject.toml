@@ -10,6 +10,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "genai-prices>=0.1.4",
     "google-genai>=2.20.0",
+    "inbox",
     "ipykernel>=7.3.0",
     "msgraph-sdk>=1.62.0",
     "natsort>=8.4.0",
@@ -31,7 +32,9 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "cwio",
+    "inbox",
 ]
 
 [tool.uv.sources]
 cwio = { workspace = true, editable = true }
+inbox = { workspace = true, editable = true }
