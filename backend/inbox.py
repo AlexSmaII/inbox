@@ -10,6 +10,7 @@ from msgraph.generated.models.attachment import Attachment
 from msgraph.generated.models.attachment_collection_response import (
     AttachmentCollectionResponse,
 )
+from msgraph.generated.models.file_attachment import FileAttachment
 from msgraph.generated.models.message import Message
 from msgraph.generated.models.message_collection_response import (
     MessageCollectionResponse,
@@ -17,6 +18,7 @@ from msgraph.generated.models.message_collection_response import (
 from msgraph.generated.users.item.user_item_request_builder import (
     UserItemRequestBuilder,
 )
+from pathlib import Path
 
 
 class PODInbox:
@@ -64,7 +66,7 @@ class PODInbox:
 
         return messages
     
-    async def get_attachments(self, email : Message) -> list[Attachment]:
+    async def get_attachments(self, email : Message) -> list[FileAttachment]:
         if not email.has_attachments: return []
 
         if not email.id: raise ValueError("Email is missing an ID field")
@@ -74,8 +76,35 @@ class PODInbox:
         ).attachments.get()
 
         if not result: return []
-        if not result.value: return []
+        attachments : list[Attachment] | None = result.value
+        if not attachments: return []
+
+        # Only include direct file attachments
+        # (no SharePoint links) in the response
+        # since these have a content_bytes field
+        file_attachments : list[FileAttachment] = []
+        for attachment in result.value:
+            if isinstance(attachment, FileAttachment):
+                file_attachments.append(attachment)
+
         return result.value
+    
+    async def save_attachment(
+        self,
+        attachment: FileAttachment,
+        out_path : Path
+    ):
+        if attachment.name is None:
+            raise TypeError("Attachment missing 'name' field")
+        if attachment.content_bytes is None:
+            raise TypeError("Attachment missing 'content_bytes' field")
+
+        out_file = out_path / attachment.name
+
+        with open(out_file, "wb") as f:
+            f.write(attachment.content_bytes)
+        
+        return out_path
 
 
 async def main():
@@ -83,17 +112,25 @@ async def main():
 
     emails : list[Message] = await client.get_emails()
 
+    ATTACHMENT_PATH = Path(__file__).parent / "attachments"
+
     for email in emails:
         print("-------------------------------------")
         print(f"SUBJECT:         {email.subject}")
         print(f"RECEIVED:        {email.received_date_time}")
         print(f"PREVIEW:\n\n{email.body_preview}\n")
 
-        attachments : list[Attachment] = await client.get_attachments(email)
+        attachments : list[FileAttachment] = await client.get_attachments(email)
         if attachments:
             print("ATTACHMENTS:")
             for attachment in attachments:
-                print(f"    NAME: {attachment.name}")
+                print(f"    NAME:  {attachment.name}")
+                try:
+                    await client.save_attachment(attachment, ATTACHMENT_PATH)
+                except Exception as e:
+                    pass
+
+
 
 
 if __name__ == "__main__":
