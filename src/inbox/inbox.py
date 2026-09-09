@@ -26,6 +26,37 @@ from inbox import credentials
 from inbox.body_content import generate_email_html
 
 
+def save_attachment(
+    attachment: FileAttachment,
+    out_path : Path
+) -> Path:
+    """
+    Download an attachment from an Outlook email.
+
+    Args:
+        attachment (FileAttachment): The attachment.
+        out_path (Path): The path to save it.
+
+    Raises:
+        TypeError: Attachment missing 'name' field.
+        TypeError: Attachment is missing a 'content_bytes' field.
+
+    Returns:
+        Path: Path of the saved attachment file.
+    """    
+    if attachment.name is None:
+        raise TypeError("Attachment missing 'name' field")
+    if attachment.content_bytes is None:
+        raise TypeError("Attachment is missing a 'content_bytes' field")
+        
+    out_file = out_path / attachment.name
+
+    with open(out_file, "wb") as f:
+        f.write(attachment.content_bytes)
+    
+    return out_file.resolve()
+
+
 class OutlookInbox:
     def __init__(
         self,
@@ -96,33 +127,6 @@ class OutlookInbox:
                 file_attachments.append(attachment)
 
         return result.value
-    
-
-    def read_attachment(
-        self,
-        attachment: FileAttachment
-    ) -> bytes:
-        if attachment.content_bytes is None:
-            raise TypeError("Attachment missing 'content_bytes' field")
-        return attachment.content_bytes
-
-
-    def save_attachment(
-        self,
-        attachment: FileAttachment,
-        out_path : Path
-    ) -> Path:
-        if attachment.name is None:
-            raise TypeError("Attachment missing 'name' field")
-        
-        content_bytes = self.read_attachment(attachment)
-
-        out_file = out_path / attachment.name
-
-        with open(out_file, "wb") as f:
-            f.write(content_bytes)
-        
-        return out_path
     
 
     async def send_email(
