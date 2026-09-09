@@ -44,7 +44,7 @@ class PODInbox:
 
 
 async def main():
-    client = EmailClient()
+    client = PODInbox()
 
     print(await client.get_emails())
 
