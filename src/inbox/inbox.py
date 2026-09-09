@@ -6,16 +6,24 @@ from msgraph.generated.models.attachment import Attachment
 from msgraph.generated.models.attachment_collection_response import (
     AttachmentCollectionResponse,
 )
+from msgraph.generated.models.body_type import BodyType
+from msgraph.generated.models.email_address import EmailAddress
 from msgraph.generated.models.file_attachment import FileAttachment
+from msgraph.generated.models.item_body import ItemBody
 from msgraph.generated.models.message import Message
 from msgraph.generated.models.message_collection_response import (
     MessageCollectionResponse,
+)
+from msgraph.generated.models.recipient import Recipient
+from msgraph.generated.users.item.send_mail.send_mail_post_request_body import (
+    SendMailPostRequestBody,
 )
 from msgraph.generated.users.item.user_item_request_builder import (
     UserItemRequestBuilder,
 )
 
 from inbox import credentials
+from inbox.body_content import generate_email_html
 
 
 class OutlookInbox:
@@ -103,7 +111,7 @@ class OutlookInbox:
         self,
         attachment: FileAttachment,
         out_path : Path
-    ):
+    ) -> Path:
         if attachment.name is None:
             raise TypeError("Attachment missing 'name' field")
         
@@ -115,3 +123,38 @@ class OutlookInbox:
             f.write(content_bytes)
         
         return out_path
+    
+
+    async def send_email(
+        self,
+        subject : str,
+        content : str,
+        recipient_emails : list[str],
+        attachments : list[FileAttachment] = []
+    ) -> Message:
+
+        to_recipients = [
+            Recipient(
+                email_address = EmailAddress(
+                    address=email
+                )
+            ) for email in recipient_emails
+        ]
+
+        body = ItemBody(
+            content_type = BodyType.Html,
+            content = generate_email_html(content)
+        )
+
+        email : SendMailPostRequestBody = SendMailPostRequestBody(
+            message = Message(
+                subject = subject,
+                to_recipients = to_recipients,
+                body = body,
+                attachments = attachments
+            )
+        )
+
+        await self.inbox.send_mail.post(email)
+
+        return email.message
