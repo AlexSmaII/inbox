@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 
 from azure.identity.aio import ClientSecretCredential
@@ -116,32 +115,3 @@ class OutlookInbox:
             f.write(content_bytes)
         
         return out_path
-    
-
-async def main():
-    client = OutlookInbox()
-
-    emails : list[Message] = await client.get_emails()
-
-    ATTACHMENT_PATH = Path(__file__).parent / "attachments"
-    ATTACHMENT_PATH.mkdir(parents=True, exist_ok=True)
-
-    for email in emails:
-        print("-------------------------------------")
-        print(f"SUBJECT:         {email.subject}")
-        print(f"RECEIVED:        {email.received_date_time}")
-        print(f"PREVIEW:\n\n{email.body_preview}\n")
-
-        attachments : list[FileAttachment] = await client.get_attachments(email)
-        if attachments:
-            print("ATTACHMENTS:")
-            for attachment in attachments:
-                print(f"    NAME:  {attachment.name}")
-                try:
-                    client.save_attachment(attachment, ATTACHMENT_PATH)
-                except Exception as e:
-                    pass
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
