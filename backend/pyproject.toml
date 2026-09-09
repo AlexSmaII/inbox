@@ -5,11 +5,13 @@ description = "Extracts data from scanned POD dockets and pushes them to CW1 eDo
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "azure-identity>=1.25.3",
     "cwio",
     "fastapi[standard]>=0.141.1",
     "genai-prices>=0.1.4",
     "google-genai>=2.20.0",
     "ipykernel>=7.3.0",
+    "msgraph-sdk>=1.62.0",
     "natsort>=8.4.0",
     "np>=1.0.2",
     "numpy>=2.5.2",
