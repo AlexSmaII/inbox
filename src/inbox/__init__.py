@@ -1,5 +1,6 @@
-from inbox.inbox import OutlookInbox
+from inbox.inbox import OutlookInbox, save_attachment
 
 __all__ = [
-    "OutlookInbox"
+    "OutlookInbox",
+    "save_attachment"
 ]
