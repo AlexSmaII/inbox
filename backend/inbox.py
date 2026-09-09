@@ -2,6 +2,7 @@
 # https://learn.microsoft.com/en-us/graph/tutorials/python-email
 
 import asyncio
+from pathlib import Path
 
 import credentials
 from azure.identity.aio import ClientSecretCredential
@@ -18,10 +19,9 @@ from msgraph.generated.models.message_collection_response import (
 from msgraph.generated.users.item.user_item_request_builder import (
     UserItemRequestBuilder,
 )
-from pathlib import Path
 
 
-class PODInbox:
+class OutlookClient:
     def __init__(
         self,
         email_address : str | None = None,
@@ -51,6 +51,7 @@ class PODInbox:
 
         # self.inbox = self.email_client.mail_folders.by_mail_folder_id('inbox')
     
+    
     # async def get_app_only_token(self) -> str:
     #     from azure.core.credentials import AccessToken
 
@@ -58,6 +59,7 @@ class PODInbox:
     #     access_token : AccessToken = await self.client_credential.get_token(graph_scope)
     #     return access_token.token
     
+
     async def get_emails(self) -> list[Message]:
         result : MessageCollectionResponse | None = await self.inbox.messages.get()
         if not result: raise ValueError("No emails found")
@@ -66,6 +68,7 @@ class PODInbox:
 
         return messages
     
+
     async def get_attachments(self, email : Message) -> list[FileAttachment]:
         if not email.has_attachments: return []
 
@@ -89,30 +92,42 @@ class PODInbox:
 
         return result.value
     
-    async def save_attachment(
+
+    def read_attachment(
+        self,
+        attachment: FileAttachment
+    ) -> bytes:
+        if attachment.content_bytes is None:
+            raise TypeError("Attachment missing 'content_bytes' field")
+        return attachment.content_bytes
+
+
+    def save_attachment(
         self,
         attachment: FileAttachment,
         out_path : Path
     ):
         if attachment.name is None:
             raise TypeError("Attachment missing 'name' field")
-        if attachment.content_bytes is None:
-            raise TypeError("Attachment missing 'content_bytes' field")
+        
+        content_bytes = self.read_attachment(attachment)
 
         out_file = out_path / attachment.name
 
         with open(out_file, "wb") as f:
-            f.write(attachment.content_bytes)
+            f.write(content_bytes)
         
         return out_path
+    
 
 
 async def main():
-    client = PODInbox()
+    client = OutlookClient()
 
     emails : list[Message] = await client.get_emails()
 
     ATTACHMENT_PATH = Path(__file__).parent / "attachments"
+    ATTACHMENT_PATH.mkdir(parents=True, exist_ok=True)
 
     for email in emails:
         print("-------------------------------------")
@@ -126,7 +141,7 @@ async def main():
             for attachment in attachments:
                 print(f"    NAME:  {attachment.name}")
                 try:
-                    await client.save_attachment(attachment, ATTACHMENT_PATH)
+                    client.save_attachment(attachment, ATTACHMENT_PATH)
                 except Exception as e:
                     pass
 
