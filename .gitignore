@@ -77,6 +77,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
 # IPython
 profile_default/
@@ -217,11 +218,4 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-!backend/data/labels.json
-backend/data
-backend/relay
-backend/cw/data
-backend/tmp
-backend/fix.py
 docs/
-*.ipynb

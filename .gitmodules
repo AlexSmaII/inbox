@@ -1,6 +1,0 @@
-[submodule "backend/Natrio_Resource-skills-hub"]
-	path = skills
-	url = https://github.com/Natrio-Asia-Pacific/Natrio_Resource-skills-hub
-[submodule "NATRIO_2614_Cargowise-MCP"]
-	path = cw_mcp
-	url = https://github.com/Natrio-Asia-Pacific/NATRIO_2614_Cargowise-MCP/
