@@ -34,8 +34,13 @@ EMAIL_ENDMATTER = """
 def generate_email_html(
     text : str
 ) -> str:
-    paragraphs = text.split("\n")
-    paragraphs = [f'<div style="font-family:\'Figtree Medium\',Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:#000">{p}</div><br/>' for p in paragraphs]
-    paragraphs = "\n\t\t".join(paragraphs)
+    text = f"""
+    <div style="font-family:\'Figtree Medium\',Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:#000">
+      {text}
+    </div>
+    """.strip()
+    # paragraphs = text.split("\n")
+    # paragraphs = [f'<div style="font-family:\'Figtree Medium\',Aptos,Aptos_EmbeddedFont,Aptos_MSFontService,Calibri,Helvetica,sans-serif; font-size:12pt; color:#000">{p}</div>' for p in paragraphs]
+    # paragraphs = "\n\t\t".join(paragraphs)
 
-    return EMAIL_FRONTMATTER + paragraphs + EMAIL_ENDMATTER
+    return EMAIL_FRONTMATTER + text + EMAIL_ENDMATTER
