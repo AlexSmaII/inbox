@@ -15,6 +15,9 @@ from msgraph.generated.models.message_collection_response import (
     MessageCollectionResponse,
 )
 from msgraph.generated.models.recipient import Recipient
+from msgraph.generated.users.item.mail_folders.item.messages.messages_request_builder import (
+    MessagesRequestBuilder,
+)
 from msgraph.generated.users.item.send_mail.send_mail_post_request_body import (
     SendMailPostRequestBody,
 )
@@ -96,15 +99,78 @@ class OutlookInbox:
     #     return access_token.token
     
 
-    async def get_emails(self) -> list[Message]:
-        result : MessageCollectionResponse | None = await self.inbox.messages.get()
-        if not result: raise ValueError("No emails found")
+    async def get_emails(
+        self,
+        unread_only : bool = True,
+        search_term : str | None = None,
+        top : int = 10
+    ) -> list[Message]:
+        """
+        Obtain a list of emails from the inbox ordered
+        by received date, descending.
+
+        Args:
+            unread_only (bool, optional):
+                Only include unread emails. Defaults to True.
+            search_term (str | None, optional):
+                If given, only include emails where the
+                subject contains a search term. Defaults to None.
+            top (int, optional):
+                Number of emails to return. Defaults to 10.
+
+        Returns:
+            list[Message]: The list of emails.
+        """        
+
+        filter_list : list[str] = []
+        if unread_only: filter_list.append("isRead eq false")
+        if search_term: filter_list.append(f"contains(subject, '{search_term}')")
+
+        filter : str = " and ".join(filter_list)
+
+        query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
+            filter=filter,
+            top=top
+        )
+
+        request_configuration = MessagesRequestBuilder.MessagesRequestBuilderGetRequestConfiguration(
+            query_parameters=query_params
+        )
+
+        result : MessageCollectionResponse | None = await self.inbox.messages.get(
+            request_configuration=request_configuration
+        )
+
+        if not result: return []
         messages : list[Message] | None = result.value
-        if not messages: raise ValueError("No emails found")
+        if messages is None: return []
 
         return messages
     
+    
+    async def mark_as_read(self, email : Message) -> Message:
+        """
+        Mark an email as read so that it does not appear
+        when calling get_emails(unread_only = True).
 
+        Args:
+            email (Message): Email to mark as read.
+
+        Returns:
+            Message: The email, now marked as read.
+        """
+
+        result : Message = await self.inbox.messages.by_message_id(
+            email.id
+        ).patch(
+            Message(
+                is_read=True
+            )
+        )
+
+        return result
+    
+    
     async def get_attachments(self, email : Message) -> list[FileAttachment]:
         if not email.has_attachments: return []
 
