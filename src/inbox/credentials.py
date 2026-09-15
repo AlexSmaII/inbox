@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-POD_INBOX = [
+OUTLOOK_INBOX = [
     "OUTLOOK_INBOX_EMAIL_ADDRESS",
     "OUTLOOK_INBOX_CLIENT_ID",
     "OUTLOOK_INBOX_TENANT_ID",
@@ -31,5 +31,5 @@ def _load_env_variables(
             "Please add values for these credentials into .env."
         )
 
-def pod_inbox() -> list[str]:
-    return _load_env_variables(POD_INBOX)
+def outlook_inbox() -> list[str]:
+    return _load_env_variables(OUTLOOK_INBOX)

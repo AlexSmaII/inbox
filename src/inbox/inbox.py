@@ -70,7 +70,7 @@ class OutlookInbox:
     ):
         if not any([
             email_address, client_id, tenant_id, client_secret
-        ]): email_address, client_id, tenant_id, client_secret = credentials.pod_inbox()
+        ]): email_address, client_id, tenant_id, client_secret = credentials.outlook_inbox()
         
         self.email_address = email_address
 
