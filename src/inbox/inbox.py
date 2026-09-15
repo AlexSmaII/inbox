@@ -18,6 +18,9 @@ from msgraph.generated.models.recipient import Recipient
 from msgraph.generated.users.item.mail_folders.item.messages.messages_request_builder import (
     MessagesRequestBuilder,
 )
+from msgraph.generated.users.item.messages.item.forward.forward_post_request_body import (
+    ForwardPostRequestBody,
+)
 from msgraph.generated.users.item.send_mail.send_mail_post_request_body import (
     SendMailPostRequestBody,
 )
@@ -148,30 +151,102 @@ class OutlookInbox:
         return messages
     
     
-    async def mark_as_read(self, email : Message) -> Message:
+    async def mark_as_read(
+        self,
+        email : Message,
+        mark_unread : bool = False
+    ) -> Message:
         """
         Mark an email as read so that it does not appear
         when calling get_emails(unread_only = True).
 
         Args:
             email (Message): Email to mark as read.
+            mark_unread (bool):
+                Whether to mark the email as unread
+                rather than read.
 
         Returns:
             Message: The email, now marked as read.
         """
-
+        
         result : Message = await self.inbox.messages.by_message_id(
             email.id
         ).patch(
             Message(
-                is_read=True
+                is_read=mark_unread
             )
         )
 
         return result
     
     
-    async def get_attachments(self, email : Message) -> list[FileAttachment]:
+    def _generate_recipients(
+        self,
+        recipient_emails : list[str]
+    ) -> list[Recipient]:
+        return [
+            Recipient(
+                email_address = EmailAddress(
+                    address=email
+                )
+            ) for email in recipient_emails
+        ]
+    
+    
+    async def forward(
+        self,
+        email : Message,
+        recipient_emails : list[str],
+        comment : str | None = "FYI"
+    ):
+        """
+        Forward an email.
+
+        Args:
+            email (Message):
+                Email to be forwarded.
+            recipient_emails (list[str]):
+                List of recipients to send.
+            comment (str | None, optional):
+                Comment. Defaults to "FYI".
+        """        
+        to_recipients : list[Recipient] = self._generate_recipients(
+            recipient_emails
+        )
+
+        request : ForwardPostRequestBody = ForwardPostRequestBody(
+            comment=comment,
+            to_recipients=to_recipients
+        )
+
+        await self.inbox.messages.by_message_id(
+            email.id
+        ).forward.post(request)
+
+
+    async def get_attachments(
+        self,
+        email : Message,
+        file_suffix : str | None = ".pdf"
+    ) -> list[FileAttachment]:
+        """
+        Download all attachments for a given email.
+
+        Args:
+            email (Message):
+                The email to download attachments for.
+            file_suffix (str | None, optional):
+                Only include files with the given suffix.
+                Defaults to ".pdf".
+
+        Raises:
+            ValueError: Email does not have an ID field.
+
+        Returns:
+            list[FileAttachment]: The attachments.
+        """        
+    
         if not email.has_attachments: return []
 
         if not email.id: raise ValueError("Email is missing an ID field")
@@ -192,7 +267,10 @@ class OutlookInbox:
             if isinstance(attachment, FileAttachment):
                 file_attachments.append(attachment)
 
-        return result.value
+        if file_suffix:
+            file_attachments = [a for a in attachments if (a.name or "").strip().lower().endswith(file_suffix)]
+
+        return file_attachments
     
 
     async def send_email(
@@ -203,14 +281,10 @@ class OutlookInbox:
         attachments : list[FileAttachment] = []
     ) -> Message:
 
-        to_recipients = [
-            Recipient(
-                email_address = EmailAddress(
-                    address=email
-                )
-            ) for email in recipient_emails
-        ]
-
+        to_recipients = self._generate_recipients(
+            recipient_emails
+        )
+        
         body = ItemBody(
             content_type = BodyType.Html,
             content = generate_email_html(content)
