@@ -174,7 +174,7 @@ class OutlookInbox:
             email.id
         ).patch(
             Message(
-                is_read=mark_unread
+                is_read=not mark_unread
             )
         )
 
