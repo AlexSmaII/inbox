@@ -123,7 +123,6 @@ class OutlookInbox:
             min_age (timedelta | None, optional):
                 If given, only include emails received at least
                 this long ago. Defaults to None.
-                Defaults to None.
             top (int, optional):
                 Number of emails to return. Defaults to 10.
 
