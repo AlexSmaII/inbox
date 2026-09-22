@@ -150,7 +150,7 @@ class OutlookInbox:
 
         query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
             filter=filter,
-            orderby="receivedDateTime desc",
+            # orderby="receivedDateTime desc",
             top=top
         )
 
