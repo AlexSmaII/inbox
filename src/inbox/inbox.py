@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from azure.identity.aio import ClientSecretCredential
@@ -106,6 +107,7 @@ class OutlookInbox:
         self,
         unread_only : bool = True,
         search_term : str | None = None,
+        min_age : timedelta | None = None,
         top : int = 10
     ) -> list[Message]:
         """
@@ -118,6 +120,10 @@ class OutlookInbox:
             search_term (str | None, optional):
                 If given, only include emails where the
                 subject contains a search term. Defaults to None.
+            min_age (timedelta | None, optional):
+                If given, only include emails received at least
+                this long ago. Defaults to None.
+                Defaults to None.
             top (int, optional):
                 Number of emails to return. Defaults to 10.
 
@@ -128,11 +134,23 @@ class OutlookInbox:
         filter_list : list[str] = []
         if unread_only: filter_list.append("isRead eq false")
         if search_term: filter_list.append(f"contains(subject, '{search_term}')")
+        if min_age:
+            date_cutoff : datetime = datetime.now(UTC)
+            # from zoneinfo import ZoneInfo
+            # print(date_cutoff.astimezone(ZoneInfo("Australia/Melbourne")).strftime("%d/%m/%Y %I:%M %p"))
+            # print(min_age)
+            date_cutoff -= min_age
+            # print(date_cutoff.astimezone(ZoneInfo("Australia/Melbourne")).strftime("%d/%m/%Y %I:%M %p"))
+            date_cutoff_str : str = date_cutoff.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            # print(date_cutoff_str)
+            filter_list.append(f"receivedDateTime le {date_cutoff_str}")
 
-        filter : str = " and ".join(filter_list)
+        filter : str | None = None
+        if filter_list: filter = " and ".join(filter_list)
 
         query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
             filter=filter,
+            orderby="receivedDateTime desc",
             top=top
         )
 
