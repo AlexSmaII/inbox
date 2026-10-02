@@ -22,6 +22,9 @@ from msgraph.generated.users.item.mail_folders.item.messages.messages_request_bu
 from msgraph.generated.users.item.messages.item.forward.forward_post_request_body import (
     ForwardPostRequestBody,
 )
+from msgraph.generated.users.item.messages.item.reply.reply_post_request_body import (
+    ReplyPostRequestBody,
+)
 from msgraph.generated.users.item.send_mail.send_mail_post_request_body import (
     SendMailPostRequestBody,
 )
@@ -297,6 +300,21 @@ class OutlookInbox:
         recipient_emails : list[str],
         attachments : list[FileAttachment] = []
     ) -> Message:
+        """
+        Send an email.
+
+        Args:
+            subject (str): The email's title.
+            content (str): The email's body content in HTML.
+            recipient_emails (list[str]):
+                Who to send the email to.
+            attachments (list[FileAttachment], optional):
+                List of FileAttachment objects to attach.
+                Defaults to [].
+
+        Returns:
+            Message: The content of the email.
+        """        
 
         to_recipients = self._generate_recipients(
             recipient_emails
@@ -319,3 +337,65 @@ class OutlookInbox:
         await self.inbox.send_mail.post(email)
 
         return email.message
+    
+
+    async def send_reply(
+        self,
+        email : Message,
+        content : str,
+        subject : str | None = None,
+        recipient_emails : list[str] | None = None,
+        attachments : list[FileAttachment] = []
+    ) -> Message:
+        """
+        Send a reply to a given email.
+
+        Args:
+            email (Message): The email to reply to.
+            content (str): The content of the reply.
+            subject (str | None, optional):
+                The title of the reply.
+                Defaults to Re: <original subject>.
+            recipient_emails (list[str] | None, optional):
+                Who to send the reply to.
+                Defaults to the sender of the original email.
+            attachments (list[FileAttachment], optional):
+                List of FileAttachment objects to attach.
+                Defaults to [].
+
+        Returns:
+            Message: The content of the reply.
+        """        
+        if not recipient_emails:
+            to_recipients = [email.sender]
+        else:
+            to_recipients = self._generate_recipients(
+                recipient_emails
+            )
+        
+        if not subject:
+            subject = f"Re: {email.subject}"
+        
+        content : str = generate_email_html(content)
+        content += "<br/><hr/><br/>"
+        content += email.body.content
+
+        body = ItemBody(
+            content_type = BodyType.Html,
+            content = content
+        )
+
+        reply : ReplyPostRequestBody = ReplyPostRequestBody(
+            message = Message(
+                subject = subject,
+                to_recipients = to_recipients,
+                body = body,
+                attachments = attachments
+            )
+        )
+
+        await self.inbox.messages.by_message_id(
+            email.id
+        ).reply.post(reply)
+
+        return reply.message
