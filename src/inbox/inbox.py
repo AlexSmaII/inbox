@@ -397,13 +397,14 @@ class OutlookInbox:
         if not subject:
             subject = f"Re: {email.subject}"
         
-        # content : str = generate_email_html(content)
-        # content += "<br/><hr/><br/>"
-        # content += email.body.content
+        content : str = generate_email_html(content)
+        content = content.strip()
+        content += "<br/><hr/><br/>"
+        content += email.body.content.strip()
 
         body = ItemBody(
             content_type = BodyType.Html,
-            content = generate_email_html(content)
+            content = content
         )
 
         reply : ReplyPostRequestBody = ReplyPostRequestBody(
