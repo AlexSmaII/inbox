@@ -111,7 +111,8 @@ class OutlookInbox:
         unread_only : bool = True,
         search_term : str | None = None,
         min_age : timedelta | None = None,
-        top : int = 10
+        top : int = 10,
+        exclude_self : bool = True
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -128,14 +129,21 @@ class OutlookInbox:
                 this long ago. Defaults to None.
             top (int, optional):
                 Number of emails to return. Defaults to 10.
+            exclude_self (bool, optional):
+                Exclude emails send from this inbox.
+                Defaults to True.
 
         Returns:
             list[Message]: The list of emails.
-        """        
+        """
 
         filter_list : list[str] = []
         if unread_only: filter_list.append("isRead eq false")
         if search_term: filter_list.append(f"contains(subject, '{search_term}')")
+        if exclude_self and self.email_address:
+            filter_list.append(
+                f"from/emailAddress/address ne '{self.email_address}'"
+            )
         if min_age:
             date_cutoff : datetime = datetime.now(UTC)
             # from zoneinfo import ZoneInfo
@@ -365,10 +373,14 @@ class OutlookInbox:
 
         Returns:
             Message: The content of the reply.
-        """        
+        """
+        
         if not recipient_emails:
             to_recipients = [email.sender]
         else:
+            sender_address : str = email.sender.email_address.address
+            if not sender_address in recipient_emails:
+                recipient_emails.append(sender_address)
             to_recipients = self._generate_recipients(
                 recipient_emails
             )
@@ -376,13 +388,13 @@ class OutlookInbox:
         if not subject:
             subject = f"Re: {email.subject}"
         
-        content : str = generate_email_html(content)
-        content += "<br/><hr/><br/>"
-        content += email.body.content
+        # content : str = generate_email_html(content)
+        # content += "<br/><hr/><br/>"
+        # content += email.body.content
 
         body = ItemBody(
             content_type = BodyType.Html,
-            content = content
+            content = generate_email_html(content)
         )
 
         reply : ReplyPostRequestBody = ReplyPostRequestBody(
