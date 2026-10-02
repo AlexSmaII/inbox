@@ -112,7 +112,8 @@ class OutlookInbox:
         search_term : str | None = None,
         min_age : timedelta | None = None,
         top : int = 10,
-        exclude_self : bool = True
+        exclude_self : bool = True,
+        from_email_address : str | None = None
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -132,6 +133,10 @@ class OutlookInbox:
             exclude_self (bool, optional):
                 Exclude emails send from this inbox.
                 Defaults to True.
+            from_email_address (str | None, optional):
+                If given, only include emails sent from this
+                address. Defaults to None, which includes
+                every sender.
 
         Returns:
             list[Message]: The list of emails.
@@ -140,6 +145,10 @@ class OutlookInbox:
         filter_list : list[str] = []
         if unread_only: filter_list.append("isRead eq false")
         if search_term: filter_list.append(f"contains(subject, '{search_term}')")
+        if from_email_address:
+            filter_list.append(
+                f"from/emailAddress/address eq '{from_email_address}'"
+            )
         if exclude_self and self.email_address:
             filter_list.append(
                 f"from/emailAddress/address ne '{self.email_address}'"
