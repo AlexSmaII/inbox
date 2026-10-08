@@ -19,6 +19,9 @@ from msgraph.generated.models.recipient import Recipient
 from msgraph.generated.users.item.mail_folders.item.messages.messages_request_builder import (
     MessagesRequestBuilder,
 )
+from msgraph.generated.users.item.messages.item.attachments.attachments_request_builder import (
+    AttachmentsRequestBuilder,
+)
 from msgraph.generated.users.item.messages.item.forward.forward_post_request_body import (
     ForwardPostRequestBody,
 )
@@ -362,6 +365,68 @@ class OutlookInbox:
             ]
 
         return file_attachments
+
+
+    async def list_attachments(
+        self,
+        email : Message,
+        file_suffix : str | None = ".pdf"
+    ) -> list[Attachment]:
+        """
+        List an email's attachments without downloading them.
+
+        get_attachments asks for the whole collection, and Graph answers
+        that with contentBytes on every attachment. A batch of scanned
+        activity sheets is megabytes, so a caller which only wants to know
+        what is attached pays for the files themselves. This asks for the
+        identifying fields and nothing else.
+
+        The result carries no bytes, so it cannot be read or saved. Fetch
+        one with get_attachment once it is known which one is wanted.
+
+        Args:
+            email (Message):
+                The email to list attachments for.
+            file_suffix (str | None, optional):
+                Only include files with the given suffix.
+                Defaults to ".pdf".
+
+        Raises:
+            ValueError: Email does not have an ID field.
+
+        Returns:
+            list[Attachment]: The attachments, without their contents.
+        """
+        if not email.has_attachments: return []
+
+        if not email.id: raise ValueError("Email is missing an ID field")
+
+        query_params = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetQueryParameters(
+            select=["id", "name", "size", "contentType"]
+        )
+
+        request_configuration = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetRequestConfiguration(
+            query_parameters=query_params
+        )
+
+        result : AttachmentCollectionResponse | None = await self.inbox.messages.by_message_id(
+            email.id
+        ).attachments.get(request_configuration=request_configuration)
+
+        if not result: return []
+        attachments : list[Attachment] | None = result.value
+        if not attachments: return []
+
+        if file_suffix:
+            # Selected by name rather than by type. Without contentBytes a
+            # reference attachment and a file attachment are much the same
+            # object, and the name is what says whether it is a scan.
+            attachments = [
+                a for a in attachments
+                if (a.name or "").strip().lower().endswith(file_suffix)
+            ]
+
+        return attachments
 
 
     async def get_attachment(
