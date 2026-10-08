@@ -36,6 +36,32 @@ from inbox import credentials
 from inbox.body_content import generate_email_html
 
 
+def _graph_timestamp(
+    moment : datetime
+) -> str:
+    """
+    Render a moment the way Microsoft Graph compares
+    receivedDateTime against.
+
+    Graph holds the received time in UTC, so a moment carrying
+    another timezone is converted rather than having its offset
+    written out. A moment carrying none is read as UTC, which
+    is what the rest of this package works in.
+
+    Args:
+        moment (datetime): The moment to render.
+
+    Returns:
+        str: The moment as an ISO timestamp ending in Z.
+    """
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+
+    return moment.astimezone(UTC).isoformat(
+        timespec="milliseconds"
+    ).replace("+00:00", "Z")
+
+
 def save_attachment(
     attachment: FileAttachment,
     out_path : Path
@@ -113,7 +139,9 @@ class OutlookInbox:
         min_age : timedelta | None = None,
         top : int = 10,
         exclude_self : bool = True,
-        from_email_address : str | None = None
+        from_email_address : str | None = None,
+        received_from : datetime | None = None,
+        received_to : datetime | None = None
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -137,6 +165,15 @@ class OutlookInbox:
                 If given, only include emails sent from this
                 address. Defaults to None, which includes
                 every sender.
+            received_from (datetime | None, optional):
+                If given, only include emails received at or
+                after this moment. Must carry a timezone, since
+                Microsoft Graph compares against an absolute
+                instant rather than a wall clock. Defaults to
+                None.
+            received_to (datetime | None, optional):
+                If given, only include emails received before
+                this moment. Defaults to None.
 
         Returns:
             list[Message]: The list of emails.
@@ -163,6 +200,16 @@ class OutlookInbox:
             date_cutoff_str : str = date_cutoff.isoformat(timespec="milliseconds").replace("+00:00", "Z")
             # print(date_cutoff_str)
             filter_list.append(f"receivedDateTime le {date_cutoff_str}")
+
+        if received_from:
+            filter_list.append(
+                f"receivedDateTime ge {_graph_timestamp(received_from)}"
+            )
+
+        if received_to:
+            filter_list.append(
+                f"receivedDateTime lt {_graph_timestamp(received_to)}"
+            )
 
         filter : str | None = None
         if filter_list: filter = " and ".join(filter_list)
@@ -308,6 +355,42 @@ class OutlookInbox:
             file_attachments = [a for a in attachments if (a.name or "").strip().lower().endswith(file_suffix)]
 
         return file_attachments
+
+
+    async def get_attachment(
+        self,
+        email_id : str,
+        attachment_id : str
+    ) -> FileAttachment:
+        """
+        Download one attachment from an email by its identifier.
+
+        Reading one attachment rather than every attachment of
+        the email is what lets a caller show a single scanned
+        sheet without downloading the rest of the batch beside
+        it.
+
+        Args:
+            email_id (str): Identifier of the email.
+            attachment_id (str): Identifier of the attachment.
+
+        Raises:
+            TypeError: The attachment is a link rather than a
+                file, and so carries no bytes.
+
+        Returns:
+            FileAttachment: The attachment, including its bytes.
+        """
+        attachment : Attachment | None = await self.inbox.messages.by_message_id(
+            email_id
+        ).attachments.by_attachment_id(attachment_id).get()
+
+        if not isinstance(attachment, FileAttachment):
+            raise TypeError(
+                f"Attachment '{attachment_id}' is not a file attachment"
+            )
+
+        return attachment
     
 
     async def send_email(
