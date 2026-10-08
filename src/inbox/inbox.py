@@ -352,7 +352,14 @@ class OutlookInbox:
                 file_attachments.append(attachment)
 
         if file_suffix:
-            file_attachments = [a for a in attachments if (a.name or "").strip().lower().endswith(file_suffix)]
+            # Narrows the file attachments rather than the whole collection.
+            # Filtering the collection put a SharePoint link named '.pdf'
+            # back into the result, and a link carries no content_bytes, so
+            # a caller reading the file got an AttributeError instead.
+            file_attachments = [
+                a for a in file_attachments
+                if (a.name or "").strip().lower().endswith(file_suffix)
+            ]
 
         return file_attachments
 
