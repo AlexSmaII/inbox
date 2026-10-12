@@ -144,7 +144,8 @@ class OutlookInbox:
         exclude_self : bool = True,
         from_email_address : str | None = None,
         received_from : datetime | None = None,
-        received_to : datetime | None = None
+        received_to : datetime | None = None,
+        skip : int = 0
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -177,6 +178,10 @@ class OutlookInbox:
             received_to (datetime | None, optional):
                 If given, only include emails received before
                 this moment. Defaults to None.
+            skip (int, optional):
+                How many of the matching emails to pass over
+                before the ones returned, which is what reads a
+                mailbox a page at a time. Defaults to 0.
 
         Returns:
             list[Message]: The list of emails.
@@ -219,8 +224,14 @@ class OutlookInbox:
 
         query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
             filter=filter,
-            # orderby="receivedDateTime desc",
-            top=top
+            # The order is the mailbox's own, which is newest first, and
+            # is not asked for. Microsoft Graph refuses to sort a result
+            # it has already restricted this far and answers "The
+            # restriction or sort order is too complex for this
+            # operation", so asking for the order it was going to use
+            # anyway is what would break paging rather than steady it.
+            top=top,
+            skip=skip or None
         )
 
         request_configuration = MessagesRequestBuilder.MessagesRequestBuilderGetRequestConfiguration(

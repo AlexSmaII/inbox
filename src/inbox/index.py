@@ -58,6 +58,26 @@ IndexedSearch treats it as undecided and tries once more.
 """
 
 
+PAGE_SIZE = 25
+"""
+How many messages a search reads from the mailbox at a time.
+
+Large enough that an ordinary search is one request, and small
+enough that a search which stops early has not paid to classify
+a page it did not need.
+"""
+
+MAX_CANDIDATES = 200
+"""
+How many messages a search considers before giving up.
+
+A bound on the work rather than a page size. A mailbox whose
+wanted messages have been buried under several hundred unwanted
+ones is a mailbox which needs attention, and reading the whole
+of it on every search would not be the way to give it any.
+"""
+
+
 class MessageLabel(BaseModel):
     """
     What a classifier decided one message is.
@@ -338,38 +358,47 @@ class IndexedSearch:
     async def search(
         self,
         label : str,
+        limit : int | None = None,
         unread_only : bool = True,
         min_age : timedelta | None = None,
-        top : int = 10,
         exclude_self : bool = True,
         from_email_address : str | None = None,
         received_from : datetime | None = None,
         received_to : datetime | None = None,
+        page_size : int = PAGE_SIZE,
+        max_candidates : int = MAX_CANDIDATES,
         reclassify : bool = False
     ) -> list[Message]:
         """
         List the messages a classifier decided are of one kind.
 
         The arguments the mailbox can answer are passed to it
-        unchanged, so this costs one mailbox query however many
-        messages are asked for. What it does cost is a
-        classification of each candidate which the index has no
-        decision for.
+        unchanged. What this adds is the one thing the mailbox
+        cannot answer, so the cost of a search is a
+        classification of each candidate the index holds no
+        decision for, and nothing for the rest.
 
-        The candidates are the messages the mailbox returns, so
-        `top` bounds what is considered rather than what is
-        returned: a search for ten with five of them of the
-        wanted kind answers five.
+        The mailbox is read a page at a time until enough
+        messages carrying the label have been found, because
+        wanted and unwanted messages are mixed together in it and
+        the mailbox cannot be asked to return only one of them. A
+        caller which leaves a message where it is, rather than
+        marking it as read or moving it, will accumulate
+        unwanted messages ahead of the wanted ones, so a search
+        which read one page would eventually stop finding
+        anything. `max_candidates` is what bounds how far it
+        reads instead.
 
         Args:
             label (str): The label to return messages for.
+            limit (int | None, optional):
+                How many messages to return. Defaults to None,
+                which is every one found within max_candidates.
             unread_only (bool, optional):
                 Only consider unread messages. Defaults to True.
             min_age (timedelta | None, optional):
                 Only consider messages received at least this
                 long ago. Defaults to None.
-            top (int, optional):
-                How many messages to consider. Defaults to 10.
             exclude_self (bool, optional):
                 Leave out messages sent from this mailbox.
                 Defaults to True.
@@ -382,6 +411,13 @@ class IndexedSearch:
             received_to (datetime | None, optional):
                 Only consider messages received before this
                 moment. Defaults to None.
+            page_size (int, optional):
+                How many messages to read from the mailbox at a
+                time. Defaults to PAGE_SIZE.
+            max_candidates (int, optional):
+                How many messages to consider in all, however
+                few of them carry the label. Defaults to
+                MAX_CANDIDATES.
             reclassify (bool, optional):
                 Decide every candidate again rather than reading
                 the index. Defaults to False.
@@ -391,25 +427,44 @@ class IndexedSearch:
                 The messages carrying the label, in the order the
                 mailbox gave them.
         """
-        messages : list[Message] = await self.inbox.get_emails(
-            unread_only        = unread_only,
-            search_term        = None,
-            min_age            = min_age,
-            top                = top,
-            exclude_self       = exclude_self,
-            from_email_address = from_email_address,
-            received_from      = received_from,
-            received_to        = received_to
-        )
+        found : list[Message] = []
+        seen : int = 0
 
-        if not messages:
-            return []
+        while seen < max_candidates:
+            wanted = min(page_size, max_candidates - seen)
 
-        decisions = await self.classify(messages, reclassify=reclassify)
+            page : list[Message] = await self.inbox.get_emails(
+                unread_only        = unread_only,
+                search_term        = None,
+                min_age            = min_age,
+                top                = wanted,
+                exclude_self       = exclude_self,
+                from_email_address = from_email_address,
+                received_from      = received_from,
+                received_to        = received_to,
+                skip               = seen
+            )
 
-        return [
-            message for message in messages
-            if message.id and decisions.get(
-                message.id, MessageLabel(message_id="", label=UNKNOWN)
-            ).label == label
-        ]
+            if not page:
+                break
+
+            seen += len(page)
+
+            decisions = await self.classify(page, reclassify=reclassify)
+
+            for message in page:
+                if not message.id:
+                    continue
+                decision = decisions.get(message.id)
+                if decision is not None and decision.label == label:
+                    found.append(message)
+
+            if limit is not None and len(found) >= limit:
+                return found[:limit]
+
+            # A short page is the end of the mailbox. Asking for the
+            # next one would answer nothing and cost a request.
+            if len(page) < wanted:
+                break
+
+        return found

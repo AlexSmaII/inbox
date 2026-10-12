@@ -201,12 +201,17 @@ search = IndexedSearch(
     classifier=InvoiceClassifier(),
 )
 
-emails = await search.search("invoice", top=50)
+emails = await search.search("invoice", limit=10)
 ```
 
-`top` bounds the candidates the mailbox returns rather than the
-messages which come back, so a search of fifty messages holding
-five invoices answers five.
+The mailbox holds wanted and unwanted messages mixed together
+and cannot be asked to return only one of them, so the search
+reads it a page at a time until `limit` messages carrying the
+label have been found. A caller which leaves a message where it
+is, rather than marking it as read or moving it, accumulates
+unwanted messages ahead of the wanted ones, which is why one
+page is not enough. `max_candidates` bounds how far it reads,
+and `limit` left out returns everything found within that bound.
 
 ### Keeping decisions
 
