@@ -381,13 +381,12 @@ class IndexedSearch:
         The mailbox is read a page at a time until enough
         messages carrying the label have been found, because
         wanted and unwanted messages are mixed together in it and
-        the mailbox cannot be asked to return only one of them. A
-        caller which leaves a message where it is, rather than
-        marking it as read or moving it, will accumulate
-        unwanted messages ahead of the wanted ones, so a search
-        which read one page would eventually stop finding
-        anything. `max_candidates` is what bounds how far it
-        reads instead.
+        the mailbox cannot be asked to return only one of them.
+        One page would therefore answer fewer messages than were
+        asked for whenever anything else is sitting among them,
+        and nothing at all once a message no caller claims has
+        settled at the front. `max_candidates` is what bounds how
+        far it reads instead.
 
         Args:
             label (str): The label to return messages for.

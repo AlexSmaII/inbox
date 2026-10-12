@@ -207,11 +207,11 @@ emails = await search.search("invoice", limit=10)
 The mailbox holds wanted and unwanted messages mixed together
 and cannot be asked to return only one of them, so the search
 reads it a page at a time until `limit` messages carrying the
-label have been found. A caller which leaves a message where it
-is, rather than marking it as read or moving it, accumulates
-unwanted messages ahead of the wanted ones, which is why one
-page is not enough. `max_candidates` bounds how far it reads,
-and `limit` left out returns everything found within that bound.
+label have been found. One page would answer fewer than were
+asked for whenever anything else is sitting among them, and
+nothing at all once a message no caller ever claims has settled
+at the front. `max_candidates` bounds how far it reads, and
+`limit` left out returns everything found within that bound.
 
 ### Keeping decisions
 
