@@ -219,7 +219,8 @@ class OutlookInbox:
         from_email_address : str | None = None,
         received_from : datetime | None = None,
         received_to : datetime | None = None,
-        skip : int = 0
+        skip : int = 0,
+        select : list[str] | None = None
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -256,6 +257,14 @@ class OutlookInbox:
                 How many of the matching emails to pass over
                 before the ones returned, which is what reads a
                 mailbox a page at a time. Defaults to 0.
+            select (list[str] | None, optional):
+                The message properties to return, named as
+                Microsoft Graph names them. Defaults to None,
+                which returns the whole message. A caller which
+                only lists what arrived should name the few
+                fields it reads: the body travels with a message
+                otherwise, and a page of them is most of the time
+                a listing takes.
 
         Returns:
             list[Message]: The list of emails.
@@ -305,7 +314,8 @@ class OutlookInbox:
             # operation", so asking for the order it was going to use
             # anyway is what would break paging rather than steady it.
             top=top,
-            skip=skip or None
+            skip=skip or None,
+            select=select
         )
 
         request_configuration = MessagesRequestBuilder.MessagesRequestBuilderGetRequestConfiguration(
