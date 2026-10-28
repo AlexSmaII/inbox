@@ -1,4 +1,4 @@
-from inbox.inbox import OutlookInbox, save_attachment
+from inbox.inbox import OutlookInbox, file_attachments, save_attachment
 from inbox.index import (
     UNKNOWN,
     IndexedSearch,
@@ -16,5 +16,6 @@ __all__ = [
     "MessageIndex",
     "MessageLabel",
     "OutlookInbox",
+    "file_attachments",
     "save_attachment"
 ]

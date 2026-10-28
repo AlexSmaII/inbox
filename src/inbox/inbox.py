@@ -65,6 +65,80 @@ def _graph_timestamp(
     ).replace("+00:00", "Z")
 
 
+ITEM_EXPAND = "microsoft.graph.itemAttachment/item"
+"""
+What asks Graph for the message carried inside an attachment.
+
+An itemAttachment is returned without its own item unless this is
+expanded, and an item returned without its attachments says nothing
+about the files it holds. One expanded request answers both, with the
+nested files' bytes included, so a batch forwarded as an attached email
+costs no more to read than one attached directly.
+"""
+
+
+MAX_ATTACHMENT_DEPTH = 4
+"""
+How far into attached messages to look for files.
+
+Graph expands one level, so anything deeper arrives only if a later
+version of the service sends it. The bound is here so that a message
+which somehow attaches itself cannot be followed forever.
+"""
+
+
+def file_attachments(
+    attachments : list[Attachment] | None,
+    depth : int = 0
+) -> list[FileAttachment]:
+    """
+    Every file in a collection of attachments, including the files
+    carried inside attached messages.
+
+    A person who forwards a batch as an attached email rather than
+    forwarding it inline sends the same scans, but Graph files them
+    under the message they came from rather than under the message
+    which arrived. Reading only the outer collection therefore finds
+    nothing and the batch looks like an email with no documents in it.
+
+    A reference attachment, which is a link to a document rather than
+    the document, carries no bytes and is left out, as is an attached
+    item which is a contact or an appointment rather than a message.
+
+    Args:
+        attachments (list[Attachment] | None):
+            The collection to read, or nothing.
+        depth (int, optional):
+            How many attached messages deep this call already is.
+            Defaults to 0, which is the message itself.
+
+    Returns:
+        list[FileAttachment]:
+            The files, outermost first, each with whatever bytes the
+            request they came from asked for.
+    """
+    found : list[FileAttachment] = []
+
+    if not attachments or depth > MAX_ATTACHMENT_DEPTH:
+        return found
+
+    for attachment in attachments:
+        if isinstance(attachment, FileAttachment):
+            found.append(attachment)
+            continue
+
+        # An itemAttachment, whose files belong to the message it
+        # holds. Anything else is a link, which has neither an item
+        # nor bytes, and getattr answers None for it rather than
+        # needing the type to be tested for.
+        item = getattr(attachment, "item", None)
+        found.extend(
+            file_attachments(getattr(item, "attachments", None), depth + 1)
+        )
+
+    return found
+
+
 def save_attachment(
     attachment: FileAttachment,
     out_path : Path
@@ -145,7 +219,8 @@ class OutlookInbox:
         from_email_address : str | None = None,
         received_from : datetime | None = None,
         received_to : datetime | None = None,
-        skip : int = 0
+        skip : int = 0,
+        select : list[str] | None = None
     ) -> list[Message]:
         """
         Obtain a list of emails from the inbox ordered
@@ -182,6 +257,14 @@ class OutlookInbox:
                 How many of the matching emails to pass over
                 before the ones returned, which is what reads a
                 mailbox a page at a time. Defaults to 0.
+            select (list[str] | None, optional):
+                The message properties to return, named as
+                Microsoft Graph names them. Defaults to None,
+                which returns the whole message. A caller which
+                only lists what arrived should name the few
+                fields it reads: the body travels with a message
+                otherwise, and a page of them is most of the time
+                a listing takes.
 
         Returns:
             list[Message]: The list of emails.
@@ -231,7 +314,8 @@ class OutlookInbox:
             # operation", so asking for the order it was going to use
             # anyway is what would break paging rather than steady it.
             top=top,
-            skip=skip or None
+            skip=skip or None,
+            select=select
         )
 
         request_configuration = MessagesRequestBuilder.MessagesRequestBuilderGetRequestConfiguration(
@@ -331,6 +415,12 @@ class OutlookInbox:
         """
         Download all attachments for a given email.
 
+        The files carried inside attached messages are included
+        beside the files attached to the email itself. A batch
+        forwarded as an attached email rather than forwarded
+        inline holds its scans one level down, and reading only
+        the outer collection found none of them.
+
         Args:
             email (Message):
                 The email to download attachments for.
@@ -342,40 +432,139 @@ class OutlookInbox:
             ValueError: Email does not have an ID field.
 
         Returns:
-            list[FileAttachment]: The attachments.
-        """        
-    
+            list[FileAttachment]:
+                The attachments, those of the email itself first.
+                A file found inside an attached message is
+                identified by that message rather than by this
+                one, so it cannot be fetched again through
+                get_attachment with this email's identifier.
+        """
+
         if not email.has_attachments: return []
 
         if not email.id: raise ValueError("Email is missing an ID field")
 
-        result : AttachmentCollectionResponse = await self.inbox.messages.by_message_id(
+        query_params = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetQueryParameters(
+            expand=[ITEM_EXPAND]
+        )
+
+        request_configuration = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetRequestConfiguration(
+            query_parameters=query_params
+        )
+
+        result : AttachmentCollectionResponse | None = await self.inbox.messages.by_message_id(
             email.id
-        ).attachments.get()
+        ).attachments.get(request_configuration=request_configuration)
 
         if not result: return []
         attachments : list[Attachment] | None = result.value
         if not attachments: return []
 
-        # Only include direct file attachments
-        # (no SharePoint links) in the response
-        # since these have a content_bytes field
-        file_attachments : list[FileAttachment] = []
+        # Only files are returned, because a SharePoint link has no
+        # content_bytes field and a caller reading one got an
+        # AttributeError rather than a document.
+        found : list[FileAttachment] = file_attachments(attachments)
+
+        # The same message attached twice carries the same file twice,
+        # and a batch read twice would record its hours twice.
+        seen : set[str] = set()
+        unique : list[FileAttachment] = []
+        for attachment in found:
+            key = attachment.id or f"{attachment.name}:{attachment.size}"
+            if key in seen: continue
+            seen.add(key)
+            unique.append(attachment)
+
+        if not file_suffix: return unique
+
+        # Narrows the file attachments rather than the whole collection.
+        # Filtering the collection put a SharePoint link named '.pdf'
+        # back into the result, and a link carries no content_bytes, so
+        # a caller reading the file got an AttributeError instead.
+        return [
+            a for a in unique
+            if (a.name or "").strip().lower().endswith(file_suffix)
+        ]
+
+
+    async def attached_messages(
+        self,
+        email : Message,
+        file_suffix : str | None = ".pdf"
+    ) -> list[Message]:
+        """
+        The emails attached to an email.
+
+        Somebody chasing a batch which never arrived forwards the
+        original as an attachment rather than forwarding it inline,
+        and several days of sheets then arrive on one message. Each
+        attached email keeps its own sender, subject and arrival
+        time, none of which the message carrying them states, so
+        this is what says which days a chased-up batch covers.
+
+        Microsoft Graph expands one level, so an email attached to
+        an attached email is not reported here even though
+        get_attachments would still find its files.
+
+        Args:
+            email (Message):
+                The email to read the attached emails of.
+            file_suffix (str | None, optional):
+                Count only files with this suffix against each
+                attached email. Defaults to ".pdf".
+
+        Raises:
+            ValueError: Email does not have an ID field.
+
+        Returns:
+            list[Message]:
+                One per attached email, in the order the mailbox
+                holds them, each carrying its own attachments.
+                Empty where nothing is attached or nothing
+                attached is an email.
+        """
+        if not email.has_attachments: return []
+
+        if not email.id: raise ValueError("Email is missing an ID field")
+
+        query_params = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetQueryParameters(
+            expand=[ITEM_EXPAND]
+        )
+
+        request_configuration = AttachmentsRequestBuilder.AttachmentsRequestBuilderGetRequestConfiguration(
+            query_parameters=query_params
+        )
+
+        result : AttachmentCollectionResponse | None = await self.inbox.messages.by_message_id(
+            email.id
+        ).attachments.get(request_configuration=request_configuration)
+
+        if not result or not result.value: return []
+
+        messages : list[Message] = []
+
         for attachment in result.value:
-            if isinstance(attachment, FileAttachment):
-                file_attachments.append(attachment)
+            item = getattr(attachment, "item", None)
+            if not isinstance(item, Message): continue
 
-        if file_suffix:
-            # Narrows the file attachments rather than the whole collection.
-            # Filtering the collection put a SharePoint link named '.pdf'
-            # back into the result, and a link carries no content_bytes, so
-            # a caller reading the file got an AttributeError instead.
-            file_attachments = [
-                a for a in file_attachments
-                if (a.name or "").strip().lower().endswith(file_suffix)
-            ]
+            # The attached email as Graph returns it, which names no
+            # subject of its own where the attachment was renamed. The
+            # attachment's name is what a person sees in Outlook, so it
+            # stands in for a subject the item does not carry.
+            if item.subject is None: item.subject = attachment.name
 
-        return file_attachments
+            # Narrowed here rather than by the caller, so that the files
+            # counted against an attached email are the same ones
+            # get_attachments would return for the message as a whole.
+            if file_suffix:
+                item.attachments = [
+                    a for a in file_attachments(item.attachments)
+                    if (a.name or "").strip().lower().endswith(file_suffix)
+                ]
+
+            messages.append(item)
+
+        return messages
 
 
     async def list_attachments(
